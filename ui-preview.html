@@ -19,7 +19,7 @@
     nav { display:grid; gap:5px; }
     .nav-item { display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; color:#68737d; font-size:14px; }
     .nav-item.active { color:var(--accent-strong); background:var(--accent-soft); font-weight:700; }
-    .nav-icon { width:20px; text-align:center; font-size:18px; }
+    .nav-icon { width:20px; text-align:center; font-size:18px; }.nav-icon{position:relative;width:20px;height:20px;flex:none;color:currentColor}.nav-icon:before,.nav-icon:after{content:"";position:absolute}.nav-icon-home:before{left:3px;top:8px;width:14px;height:10px;border:1.8px solid currentColor;border-top:0;border-radius:2px}.nav-icon-home:after{left:4px;top:3px;width:11px;height:11px;border-left:1.8px solid currentColor;border-top:1.8px solid currentColor;transform:rotate(45deg)}.nav-icon-fridge{border:1.8px solid currentColor;border-radius:3px}.nav-icon-fridge:before{left:0;right:0;top:8px;border-top:1.8px solid currentColor}.nav-icon-fridge:after{left:3px;top:4px;height:2px;border-left:1.8px solid currentColor;box-shadow:10px 0 currentColor}.nav-icon-calendar{border:1.8px solid currentColor;border-radius:3px}.nav-icon-calendar:before{left:0;right:0;top:5px;border-top:1.8px solid currentColor}.nav-icon-calendar:after{left:4px;top:-3px;width:2px;height:6px;background:currentColor;box-shadow:8px 0 currentColor}.nav-icon-checklist:before{left:6px;top:2px;width:11px;height:15px;border:1.8px solid currentColor;border-radius:2px}.nav-icon-checklist:after{left:1px;top:4px;width:7px;height:4px;border-left:1.8px solid currentColor;border-bottom:1.8px solid currentColor;transform:rotate(-45deg)}.nav-icon-notice{border:1.8px solid currentColor;border-radius:50%}.nav-icon-notice:before{left:8px;top:4px;width:2px;height:7px;background:currentColor}.nav-icon-notice:after{left:8px;top:13px;width:2px;height:2px;background:currentColor;border-radius:50%}
     .family-card { margin-top:auto; background:#f8f5f6; border-radius:16px; padding:14px; }
     .family-title { font-size:12px; color:var(--muted); margin-bottom:12px; }
     .members { display:flex; }
@@ -91,11 +91,11 @@
       <div class="brand"><div class="brand-mark">LF</div><div><strong>LEE_FAMILY</strong><small>우리 집의 오늘</small></div></div>
       <div class="nav-label">MENU</div>
       <nav>
-        <div class="nav-item active"><span class="nav-icon">⌂</span><span>오늘의 집</span></div>
-        <div class="nav-item"><span class="nav-icon">▣</span><span>냉장고</span></div>
-        <div class="nav-item"><span class="nav-icon">□</span><span>가족 일정</span></div>
-        <div class="nav-item"><span class="nav-icon">✓</span><span>집안일</span></div>
-        <div class="nav-item"><span class="nav-icon">◌</span><span>공지사항</span></div>
+        <div class="nav-item active"><span class="nav-icon nav-icon-home" aria-hidden="true"></span><span>오늘의 집</span></div>
+        <div class="nav-item"><span class="nav-icon nav-icon-fridge" aria-hidden="true"></span><span>냉장고</span></div>
+        <div class="nav-item"><span class="nav-icon nav-icon-calendar" aria-hidden="true"></span><span>가족 일정</span></div>
+        <div class="nav-item"><span class="nav-icon nav-icon-checklist" aria-hidden="true"></span><span>집안일</span></div>
+        <div class="nav-item"><span class="nav-icon nav-icon-notice" aria-hidden="true"></span><span>공지사항</span></div>
       </nav>
       <div class="family-card"><div class="family-title">함께하는 가족 <b>4</b></div><div class="members"><div class="avatar av1">엄마</div><div class="avatar av2">아빠</div><div class="avatar av3">나</div><div class="avatar av4">동생</div></div></div>
     </aside>
