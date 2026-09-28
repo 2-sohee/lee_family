@@ -37,18 +37,12 @@ async function seed() {
 
 beforeEach(() => env.clearFirestore());
 
-test("first signed-in user can create the family as its only admin", async () => {
-  const db = as("admin");
-  await assertSucceeds(getDoc(doc(db, "families/lee")));
-  await assertSucceeds(setDoc(doc(db, "families/lee"), { memberEmails: [email("admin")], adminEmails: [email("admin")] }));
-  await assertFails(setDoc(doc(as("other"), "families/other"), { memberEmails: [email("admin")], adminEmails: [email("admin")] }));
-});
-
-test("family cannot be re-created once it exists", async () => {
+test("family workspace cannot be created or re-created from the client", async () => {
+  await assertFails(setDoc(doc(as("admin"), "families/new"), { memberEmails: [email("admin")], adminEmails: [email("admin")] }));
+  await assertFails(getDoc(doc(as("admin"), "families/new")));
   await seed();
   await assertFails(setDoc(doc(as("stranger"), "families/lee"), { memberEmails: [email("stranger")], adminEmails: [email("stranger")] }));
 });
-
 test("non-members and anonymous users cannot read family data", async () => {
   await seed();
   await assertFails(getDoc(doc(as("stranger"), "families/lee")));
@@ -75,12 +69,16 @@ test("members can edit only safe fields of their own profile", async () => {
   await assertFails(updateDoc(doc(db, "families/lee"), { adminEmails: [email("mom"), email("admin")] }));
 });
 
-test("admins manage members but cannot drop their own admin access", async () => {
+test("admin manages members but the admin list is fixed", async () => {
   await seed();
   const db = as("admin");
-  await assertSucceeds(setDoc(doc(db, "families/lee/members/dad"), { username: "dad", email: email("dad") }));
+  await assertSucceeds(setDoc(doc(db, "families/lee/members/dad"), { username: "dad", email: email("dad"), role: "user" }));
+  await assertFails(setDoc(doc(db, "families/lee/members/uncle"), { username: "uncle", email: email("uncle"), role: "admin" }));
+  await assertFails(updateDoc(doc(db, "families/lee/members/mom"), { role: "admin" }));
   await assertSucceeds(updateDoc(doc(db, "families/lee"), { memberEmails: [email("admin"), email("mom"), email("dad")] }));
+  await assertFails(updateDoc(doc(db, "families/lee"), { adminEmails: [email("admin"), email("mom")] }));
   await assertFails(updateDoc(doc(db, "families/lee"), { adminEmails: [email("mom")] }));
-  await assertFails(updateDoc(doc(db, "families/lee"), { memberEmails: [email("mom")], adminEmails: [email("admin")] }));
+  await assertFails(updateDoc(doc(db, "families/lee"), { memberEmails: [email("mom")] }));
+  await assertFails(deleteDoc(doc(db, "families/lee/members/admin")));
   await assertSucceeds(deleteDoc(doc(db, "families/lee/members/dad")));
 });
