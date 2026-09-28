@@ -109,3 +109,20 @@ h1{font-size:clamp(23px,2.3vw,27px)}
 .settings-section h3{margin:0 0 12px;font-size:15px}
 @media(max-width:720px){.app-toast{bottom:calc(76px + var(--safe-bottom))}}
 .event-range{border-radius:4px}.event-range.range-open{border-top-right-radius:0;border-bottom-right-radius:0;margin-right:-6px}.event-range.range-mid{border-left-width:0;border-top-left-radius:0;border-bottom-left-radius:0;margin-left:-6px;padding-left:7px}.event-cont{opacity:.55}.form label small.muted{font-weight:400;font-size:11px}
+/* Recommendations (missing chips) and fridge ingredient editing */
+.recommendation-row .missing-list{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:6px}
+.missing-label{font-size:11px;font-weight:700;color:#2f8a52}
+.missing-chip{display:inline-block;padding:2px 9px;border-radius:99px;background:rgba(52,168,83,.16);border:1px dashed rgba(47,138,82,.55);color:#23703f;font-size:11px;font-weight:700}
+button.fridge-item{font:inherit;color:inherit;text-align:left;cursor:pointer;-webkit-appearance:none;appearance:none;touch-action:manipulation}
+button.fridge-item:hover,button.fridge-item:focus-visible{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.ingredient-manage{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.ingredient-manage summary{cursor:pointer;font-size:13px;font-weight:700;padding:6px 0}
+.ingredient-manage .table-list{margin-top:8px}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px}
+.emoji-field{max-width:80px}
+.check-line{display:flex !important;align-items:center;gap:8px;flex-direction:row !important}
+.check-line input{width:auto !important}
+.modal-actions .spacer{flex:1}
+button.danger{border:1px solid rgba(217,81,81,.4);background:#fff5f5;color:var(--danger);border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+.month-nav{display:flex;align-items:center;gap:8px}.month-nav .mini{min-width:34px;min-height:34px;font-size:15px;line-height:1}.month-nav .mini:disabled{opacity:.35;cursor:not-allowed}.month-nav [data-cal-shift="0"]{font-size:12px}

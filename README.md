@@ -1,5 +1,7 @@
 # LEE_FAMILY
 
+> 개발 인계 문서: [docs/DEVELOPMENT-HANDOFF.md](docs/DEVELOPMENT-HANDOFF.md) (최신·상세) · [HANDOFF.md](HANDOFF.md) (요약)
+
 가족용 웹앱(바닐라 HTML/CSS/JS)입니다. Vite로 빌드하고 **Firebase Hosting**에 배포하며, 로그인은 **Firebase Authentication**, 데이터는 **Cloud Firestore**를 사용합니다. `main` 브랜치에 push하면 GitHub Actions가 테스트 → 빌드 → 배포를 자동으로 실행합니다.
 
 ## 구조
@@ -30,7 +32,7 @@
 
 사용하려면 Firebase Console → **AI Logic** → **시작하기** → **Gemini Developer API**를 한 번 활성화해야 합니다(Spark 무료 플랜 가능). 활성화 전에는 사진 저장은 되고 인식 시 안내 메시지가 표시됩니다. Gemini 서버가 일시적으로 혼잡하면(500 "high demand") 다른 Gemini 모델로 자동 재시도합니다.
 
-추천 메뉴는 현재 냉장고 재료(유통기한이 지난 재료 제외)와 레시피 DB(`recipeBook`)를 동의어까지 맞춰 비교해, 보유 재료가 하나 이상인 메뉴만 보유 비율 순으로 보여줍니다. 냉장고가 비어 있으면 추천하지 않습니다.
+추천 메뉴는 현재 냉장고 재료(유통기한이 지난 재료 제외)와 레시피 DB(`recipeBook`)를 동의어까지 맞춰 비교해, 보유 재료가 하나 이상인 메뉴만 보유 비율 순으로 카테고리별 최대 5개 보여줍니다. 추가로 필요한 재료는 초록 칩으로 표시됩니다. 인식한 재료를 추가하면 사용한 사진은 자동으로 삭제됩니다. 냉장고가 비어 있으면 추천하지 않습니다.
 
 ## Firebase 프로젝트 준비 (최초 1회)
 
