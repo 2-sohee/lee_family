@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LEE_FAMILY UI Preview</title>
+  <style>
+    :root { --accent:#d97793; --accent-strong:#b95270; --accent-soft:#fdebf0; --ink:#25303b; --muted:#7c8792; --line:#e8ecef; --surface:#fff; --canvas:#f7f8f9; --danger:#d95151; --ok:#4e9a72; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--canvas); color:var(--ink); font-family:Inter,"Noto Sans KR",system-ui,sans-serif; }
+    button { border:0; font:inherit; cursor:pointer; }
+    .app { min-height:100vh; display:flex; }
+    .sidebar { width:246px; background:#fff; border-right:1px solid var(--line); padding:28px 18px; display:flex; flex-direction:column; }
+    .brand { display:flex; align-items:center; gap:11px; padding:0 12px 35px; }
+    .brand-mark { width:36px; height:36px; display:grid; place-items:center; background:var(--accent); color:white; border-radius:12px; font-weight:800; letter-spacing:-1px; }
+    .brand strong { display:block; font-size:16px; letter-spacing:1.5px; }
+    .brand small { color:var(--muted); font-size:11px; }
+    .nav-label { padding:0 12px 10px; color:#a2aab1; font-size:11px; font-weight:700; letter-spacing:1px; }
+    nav { display:grid; gap:5px; }
+    .nav-item { display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; color:#68737d; font-size:14px; }
+    .nav-item.active { color:var(--accent-strong); background:var(--accent-soft); font-weight:700; }
+    .nav-icon { width:20px; text-align:center; font-size:18px; }
+    .family-card { margin-top:auto; background:#f8f5f6; border-radius:16px; padding:14px; }
+    .family-title { font-size:12px; color:var(--muted); margin-bottom:12px; }
+    .members { display:flex; }
+    .avatar { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; color:white; border:2px solid white; font-size:11px; margin-right:-5px; }
+    .av1{background:#9a7899}.av2{background:#7595ad}.av3{background:#d39a62}.av4{background:#6ea38f}
+    .content { width:min(1240px,100%); padding:35px 42px 50px; margin:0 auto; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
+    .eyebrow { color:var(--accent-strong); font-size:12px; font-weight:800; letter-spacing:1.4px; margin-bottom:7px; }
+    h1 { margin:0; font-size:27px; letter-spacing:-1.1px; }
+    .subtitle { margin:7px 0 0; color:var(--muted); font-size:13px; }
+    .top-actions { display:flex; align-items:center; gap:14px; }
+    .icon-btn { width:38px; height:38px; border:1px solid var(--line); border-radius:12px; background:white; color:#68737d; }
+    .profile { display:flex; gap:10px; align-items:center; }
+    .profile .avatar { margin:0; width:38px; height:38px; background:var(--accent); }
+    .profile b { display:block; font-size:13px; }
+    .profile span { color:var(--muted); font-size:11px; }
+    .grid { display:grid; grid-template-columns:1.15fr .85fr; gap:18px; }
+    .card { background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:20px; box-shadow:0 4px 18px rgba(42,54,65,.035); }
+    .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+    .card-title { font-size:16px; font-weight:800; letter-spacing:-.4px; }
+    .card-link { color:var(--accent-strong); font-size:12px; font-weight:700; }
+    .fridge-card { grid-row:span 2; }
+    .fridge-summary { display:flex; align-items:center; justify-content:space-between; background:var(--accent-soft); border-radius:14px; padding:14px 16px; margin-bottom:16px; }
+    .fridge-summary b { font-size:25px; color:var(--accent-strong); }
+    .fridge-summary span { display:block; color:#87606b; font-size:12px; margin-top:3px; }
+    .fridge-temp { text-align:right; color:#87606b; font-size:12px; }
+    .fridge-temp strong { display:block; color:var(--ink); font-size:15px; }
+    .ingredient-list { display:grid; gap:8px; }
+    .ingredient { display:flex; align-items:center; gap:12px; padding:12px 10px; border-bottom:1px solid #f0f2f3; }
+    .ingredient:last-child { border-bottom:0; }
+    .food { width:38px; height:38px; display:grid; place-items:center; background:#f5f6f7; border-radius:11px; font-size:20px; }
+    .ingredient-main { flex:1; }
+    .ingredient-main b { display:block; font-size:13px; }
+    .ingredient-main span { color:var(--muted); font-size:11px; }
+    .expiry { color:var(--ok); font-size:11px; font-weight:800; }
+    .expiry.bad { color:var(--danger); }
+    .add-btn { width:100%; padding:12px; margin-top:10px; border-radius:11px; background:#fff; border:1px dashed #d8b4bd; color:var(--accent-strong); font-size:12px; font-weight:700; }
+    .notice { display:flex; gap:12px; padding:11px 0; border-bottom:1px solid #f0f2f3; }
+    .notice:last-child { border:0; }
+    .notice-pin { width:30px; height:30px; display:grid; place-items:center; background:#fff3df; border-radius:10px; }
+    .notice b { display:block; font-size:13px; }
+    .notice span { color:var(--muted); font-size:11px; }
+    .todo { display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid #f0f2f3; }
+    .check { width:17px; height:17px; border:1.5px solid #bcc5cb; border-radius:5px; }
+    .todo.done .check { background:var(--accent); border-color:var(--accent); position:relative; }
+    .todo.done .check:after { content:"✓"; color:#fff; position:absolute; font-size:11px; left:3px; top:-1px; }
+    .todo.done b { text-decoration:line-through; color:#a8b0b6; }
+    .todo b { flex:1; font-size:13px; }
+    .todo small { color:var(--muted); font-size:10px; }
+    .calendar { margin-top:18px; }
+    .calendar-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .calendar-head strong { font-size:14px; }
+    .calendar-head button { background:none; color:var(--muted); }
+    .week { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+    .day { min-height:64px; padding:7px; border:1px solid #f0f2f3; border-radius:10px; font-size:11px; }
+    .day-name { color:var(--muted); text-align:center; border:0; min-height:auto; }
+    .day.today { border-color:var(--accent); background:var(--accent-soft); }
+    .day-num { font-weight:700; }
+    .event { margin-top:7px; padding:3px 4px; border-radius:4px; background:#e8f1fb; color:#52738e; font-size:9px; white-space:nowrap; overflow:hidden; }
+    .event.pink { background:#fde8ec; color:#ad5d70; }
+    .event.green { background:#e7f4ed; color:#49816a; }
+    .footer-note { color:#a4abb1; text-align:center; font-size:11px; margin-top:24px; }
+    @media (max-width:850px) { .sidebar{width:74px;padding:22px 10px}.brand{padding:0 9px 30px}.brand div:not(.brand-mark),.nav-label,.nav-item span:not(.nav-icon),.family-card{display:none}.nav-item{justify-content:center}.content{padding:26px 18px}.grid{grid-template-columns:1fr}.fridge-card{grid-row:auto} }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">LF</div><div><strong>LEE_FAMILY</strong><small>우리 집의 오늘</small></div></div>
+      <div class="nav-label">MENU</div>
+      <nav>
+        <div class="nav-item active"><span class="nav-icon">⌂</span><span>오늘의 집</span></div>
+        <div class="nav-item"><span class="nav-icon">▣</span><span>냉장고</span></div>
+        <div class="nav-item"><span class="nav-icon">□</span><span>가족 일정</span></div>
+        <div class="nav-item"><span class="nav-icon">✓</span><span>집안일</span></div>
+        <div class="nav-item"><span class="nav-icon">◌</span><span>공지사항</span></div>
+      </nav>
+      <div class="family-card"><div class="family-title">함께하는 가족 <b>4</b></div><div class="members"><div class="avatar av1">엄마</div><div class="avatar av2">아빠</div><div class="avatar av3">나</div><div class="avatar av4">동생</div></div></div>
+    </aside>
+    <main class="content">
+      <header class="topbar">
+        <div><div class="eyebrow">MONDAY, SEPTEMBER 28</div><h1>안녕하세요, 이수희님</h1><p class="subtitle">오늘도 우리 가족의 하루를 한눈에 확인해보세요.</p></div>
+        <div class="top-actions"><button class="icon-btn">⌕</button><button class="icon-btn">♧</button><div class="profile"><div class="avatar">수희</div><div><b>이수희</b><span>가족 관리자</span></div></div></div>
+      </header>
+      <section class="grid">
+        <article class="card fridge-card">
+          <div class="card-header"><div class="card-title">냉장고 현황</div><div class="card-link">전체 보기 →</div></div>
+          <div class="fridge-summary"><div><b>24</b><span>개의 재료가 있어요</span></div><div class="fridge-temp"><strong>냉장 3.8℃</strong>마지막 업데이트 오늘 09:12</div></div>
+          <div class="ingredient-list">
+            <div class="ingredient"><div class="food">🥬</div><div class="ingredient-main"><b>배추</b><span>냉장실 · 1통</span></div><div class="expiry">D-5</div></div>
+            <div class="ingredient"><div class="food">🥚</div><div class="ingredient-main"><b>계란</b><span>냉장실 · 10개</span></div><div class="expiry">D-12</div></div>
+            <div class="ingredient"><div class="food">🥩</div><div class="ingredient-main"><b>소고기</b><span>냉동실 · 300g</span></div><div class="expiry bad">기한 지남</div></div>
+            <div class="ingredient"><div class="food">🍅</div><div class="ingredient-main"><b>방울토마토</b><span>냉장실 · 1팩</span></div><div class="expiry">D-2</div></div>
+          </div>
+          <button class="add-btn">＋ 재료 추가하기</button>
+          <div class="calendar"><div class="calendar-head"><strong>이번 주 가족 일정</strong><button>캘린더 보기 →</button></div><div class="week"><div class="day day-name">월</div><div class="day day-name">화</div><div class="day day-name">수</div><div class="day day-name">목</div><div class="day day-name">금</div><div class="day day-name">토</div><div class="day day-name">일</div><div class="day today"><div class="day-num">28</div><div class="event pink">병원 14:00</div></div><div class="day"><div class="day-num">29</div><div class="event">아빠 회의</div></div><div class="day"><div class="day-num">30</div></div><div class="day"><div class="day-num">1</div><div class="event green">분리수거</div></div><div class="day"><div class="day-num">2</div></div><div class="day"><div class="day-num">3</div></div><div class="day"><div class="day-num">4</div></div></div></div>
+        </article>
+        <article class="card">
+          <div class="card-header"><div class="card-title">오늘의 집안일</div><div class="card-link">관리 →</div></div>
+          <div class="todo"><div class="check"></div><b>거실 청소기 돌리기</b><small>수희</small></div>
+          <div class="todo"><div class="check"></div><b>화분 물주기</b><small>오늘</small></div>
+          <div class="todo done"><div class="check"></div><b>분리수거 배출</b><small>완료</small></div>
+          <button class="add-btn">＋ 할 일 추가하기</button>
+        </article>
+        <article class="card">
+          <div class="card-header"><div class="card-title">공지사항</div><div class="card-link">전체 보기 →</div></div>
+          <div class="notice"><div class="notice-pin">📌</div><div><b>이번 주 토요일 가족 식사</b><span>엄마 · 2시간 전</span></div></div>
+          <div class="notice"><div class="notice-pin">🔒</div><div><b>생일 선물 준비 안내</b><span>아빠 · 어제</span></div></div>
+          <div class="notice"><div class="notice-pin">💬</div><div><b>이번 달 관리비 확인해주세요</b><span>엄마 · 9월 25일</span></div></div>
+        </article>
+      </section>
+      <div class="footer-note">현재 테마 · 가을 / Chicory Coffee · 9월</div>
+    </main>
+  </div>
+</body>
+</html>
