@@ -12,7 +12,7 @@ import {
 import { authService, emailToUsername, normalizeUsername, usernameToEmail } from "./auth.js";
 import { db, familyId } from "./firebase.js";
 
-export const STATE_COLLECTIONS = Object.freeze(["ingredients", "events", "chores", "notices"]);
+export const STATE_COLLECTIONS = Object.freeze(["ingredients", "events", "chores", "notices", "shopping", "purchases", "budget"]);
 export const SELF_EDITABLE_MEMBER_FIELDS = Object.freeze(["name", "englishName", "avatar", "photo", "color"]);
 const MAX_DOC_BYTES = 950 * 1024;
 const DEFAULT_THEME = "#b46b7d";
@@ -94,7 +94,7 @@ export async function startCloud(user) {
   });
 
   const settings = { familyName: "LEE_FAMILY", logo: "LF", logoPhoto: "", themeColor: DEFAULT_THEME, members: [] };
-  const state = { ingredients: [], events: [], chores: [], notices: [], fridgePhotos: [] };
+  const state = { ingredients: [], events: [], chores: [], notices: [], shopping: [], purchases: [], budget: [], fridgePhotos: [] };
   const lastSaved = {};
   let knownPhotoIds = new Set();
   let lastFamilyJson = "";

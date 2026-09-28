@@ -55,6 +55,9 @@ test("members can read and write shared state", async () => {
   const db = as("mom");
   await assertSucceeds(setDoc(doc(db, "families/lee/state/chores"), { items: [{ id: 1, title: "청소" }] }));
   await assertSucceeds(getDoc(doc(db, "families/lee/state/chores")));
+  for (const name of ["shopping", "purchases", "budget"]) {
+    await assertSucceeds(setDoc(doc(db, `families/lee/state/${name}`), { items: [{ id: "1" }] }));
+  }
   await assertFails(setDoc(doc(db, "families/lee/state/secret"), { items: [] }));
   await assertSucceeds(setDoc(doc(db, "families/lee/fridgePhotos/p1"), { dataUrl: "data:image/jpeg;base64,AA" }));
   await assertSucceeds(deleteDoc(doc(db, "families/lee/fridgePhotos/p1")));

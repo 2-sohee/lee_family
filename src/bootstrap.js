@@ -7,6 +7,9 @@ window.familyPhotoStorage = Object.freeze({ photoLimits, readPhoto });
 window.familyRecognizer = Object.freeze({
   recognize: dataUrls => import("./ingredientRecognizer.js").then(module => module.recognizeIngredients(dataUrls))
 });
+window.familyPricer = Object.freeze({
+  estimate: items => import("./priceEstimator.js").then(module => module.estimatePrices(items))
+});
 document.documentElement.dataset.firebase = firebaseReady ? "configured" : "not-configured";
 
 const root = () => document.getElementById("modal-root");
