@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        (request.auth.token.admin == true ||
+         request.auth.token.role == "admin");
+    }
+
+    function isFamilyMember() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/familyMembers/$(request.auth.uid));
+    }
+
+    function canAccessFamilyData() {
+      return isAdmin() || isFamilyMember();
+    }
+
+    match /familyMembers/{userId} {
+      allow read: if canAccessFamilyData();
+      allow create: if isAdmin() && request.resource.data.uid == userId;
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow delete: if isAdmin();
+    }
+
+    match /{collection}/{documentId} {
+      allow read, create, update, delete: if
+        collection in ["ingredients", "schedules", "chores", "notices"] &&
+        canAccessFamilyData();
+    }
+  }
+}
