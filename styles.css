@@ -126,3 +126,48 @@ button.fridge-item:hover,button.fridge-item:focus-visible{border-color:var(--acc
 .modal-actions .spacer{flex:1}
 button.danger{border:1px solid rgba(217,81,81,.4);background:#fff5f5;color:var(--danger);border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
 .month-nav{display:flex;align-items:center;gap:8px}.month-nav .mini{min-width:34px;min-height:34px;font-size:15px;line-height:1}.month-nav .mini:disabled{opacity:.35;cursor:not-allowed}.month-nav [data-cal-shift="0"]{font-size:12px}
+/* Mart & Budget tabs */
+.shop-missing{margin-left:auto;border-color:rgba(47,138,82,.45);color:#23703f;background:rgba(52,168,83,.08)}
+.toolbar-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.toolbar-actions .mini:disabled{opacity:.5;cursor:not-allowed}
+.nav-icon-cart:before,.nav-icon-piggy:before{inset:0;background:currentColor;-webkit-mask:var(--icon) center/contain no-repeat;mask:var(--icon) center/contain no-repeat}
+.nav-icon-cart{--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='20' r='1.4'/%3E%3Ccircle cx='18' cy='20' r='1.4'/%3E%3Cpath d='M2 3h3l2.6 12.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.5L21 8H6'/%3E%3C/svg%3E")}
+.nav-icon-piggy{--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 11.5a6.5 5.5 0 0 1 6.5-5.5h2a6.5 5.5 0 0 1 5.9 3.2H21v4.6h-1.7a6.5 5.5 0 0 1-2.3 2.4V19h-2.6v-1.6h-3.8V19H8v-2.6A5.6 5.6 0 0 1 5 11.5z'/%3E%3Cpath d='M5 11c-1.6 0-2.4-1-2.2-2.3M10 4.2h3.5'/%3E%3Ccircle cx='16' cy='10' r='.6' fill='black'/%3E%3C/svg%3E")}
+.nav-item.nav-alert{position:relative}
+.nav-item.nav-alert .nav-icon:after{content:"";position:absolute;top:-3px;right:-4px;width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px #fff}
+.shop-last{display:flex;align-items:center;gap:8px;margin:-4px 0 12px;padding:10px 12px;border-radius:12px;background:var(--accent-soft);font-size:13px}
+.shop-group{margin-top:14px}
+.shop-group-title{font-size:13px;font-weight:800;margin-bottom:8px}
+.shop-row{align-items:flex-start}
+.shop-qty{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:99px;background:#f1f3f5;font-size:11px;font-weight:700;color:var(--ink)}
+.shop-price{display:block;margin-top:4px;font-size:12px;color:var(--ink)}
+.shop-price b{color:var(--accent-strong)}
+.shop-price.pending{color:var(--muted)}
+.shop-price a{color:var(--accent-strong);font-weight:700;white-space:nowrap}
+.price-tag{display:inline-block;padding:0 6px;border-radius:6px;background:#eef2ff;color:#4b5bbf;font-size:10px;font-weight:700}
+.search-suggestions{width:100%;height:64px;border:0;margin-top:10px}
+.mart-total{display:flex;flex-direction:column;gap:4px;padding:18px 20px;border:2px solid var(--accent);background:#fff}
+.mart-total span{font-size:20px;font-weight:800}
+.mart-total b{color:var(--accent-strong)}
+.mart-total small{color:var(--muted);font-size:12px}
+.purchase-actions{flex-wrap:wrap}
+.merge-note{display:grid;gap:6px;padding:10px 12px;border-radius:10px;background:#f4fbf6;border:1px solid rgba(47,138,82,.3);font-size:13px}
+.budget-alert{position:sticky;top:0;z-index:30;margin:0 0 14px;padding:12px 16px;border-radius:12px;background:repeating-linear-gradient(135deg,#d94848 0 14px,#c73c3c 14px 28px);color:#fff;font-size:14px;font-weight:600;box-shadow:0 6px 16px rgba(217,72,72,.25);text-align:center}
+.budget-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.piggy{width:min(320px,86vw);height:auto;display:block;margin:0 auto}
+.piggy-fill{transition:y .8s ease,height .8s ease}
+.piggy-amount{font-size:21px;font-weight:800;fill:#3a2530;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+.piggy-ratio{font-size:13px;font-weight:700;fill:#5b3a44;paint-order:stroke;stroke:#fff;stroke-width:3px}
+.budget-numbers{display:grid;gap:3px}
+.budget-numbers b{font-size:26px}
+.budget-numbers span{font-size:13px;font-weight:700;color:var(--accent-strong)}
+.budget-numbers small{font-size:12px;color:var(--muted)}
+.budget-actions{justify-content:center}
+@media(max-width:720px){
+  .toolbar-actions{width:100%}
+  .toolbar-actions .primary{margin-left:auto}
+  .mart-total span{font-size:18px}
+  .budget-alert{top:env(safe-area-inset-top);font-size:13px}
+  .shop-missing{margin-left:0}
+  .nav-item{font-size:9.5px;padding:5px 0}
+}

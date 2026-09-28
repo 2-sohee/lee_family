@@ -1,11 +1,14 @@
 import { firebaseReady } from "./firebase.js";
 import { authService, friendlyError } from "./auth.js";
 import { startCloud } from "./cloud.js";
-import { photoLimits, readPhoto } from "./photoStorage.js";
+import { photoLimits, readPhoto, readRecognitionPhoto } from "./photoStorage.js";
 
-window.familyPhotoStorage = Object.freeze({ photoLimits, readPhoto });
+window.familyPhotoStorage = Object.freeze({ photoLimits, readPhoto, readRecognitionPhoto });
 window.familyRecognizer = Object.freeze({
   recognize: dataUrls => import("./ingredientRecognizer.js").then(module => module.recognizeIngredients(dataUrls))
+});
+window.familyPricer = Object.freeze({
+  estimate: items => import("./priceEstimator.js").then(module => module.estimatePrices(items))
 });
 document.documentElement.dataset.firebase = firebaseReady ? "configured" : "not-configured";
 
