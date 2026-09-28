@@ -1,0 +1,73 @@
+rules_version = '2';
+
+// Access is granted by the family document's memberEmails/adminEmails lists,
+// which only administrators can change from the in-app admin page.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function familyPath(familyId) {
+      return /databases/$(database)/documents/families/$(familyId);
+    }
+
+    function isMember(familyId) {
+      return signedIn() && exists(familyPath(familyId)) &&
+        myEmail() in get(familyPath(familyId)).data.memberEmails;
+    }
+
+    function isAdmin(familyId) {
+      return signedIn() && exists(familyPath(familyId)) &&
+        myEmail() in get(familyPath(familyId)).data.adminEmails;
+    }
+
+    function validAccessLists(data) {
+      return data.memberEmails is list && data.adminEmails is list &&
+        data.adminEmails.size() > 0 &&
+        data.memberEmails.hasAll(data.adminEmails);
+    }
+
+    match /families/{familyId} {
+      // Signed-in users may learn that a family does not exist yet (first setup).
+      allow get: if isMember(familyId) || (signedIn() && resource == null);
+      allow list: if false;
+      // First setup: the creator becomes the only member and administrator.
+      allow create: if signedIn() &&
+        request.resource.data.memberEmails == [myEmail()] &&
+        request.resource.data.adminEmails == [myEmail()];
+      // Administrators cannot remove their own admin access.
+      allow update: if isAdmin(familyId) &&
+        validAccessLists(request.resource.data) &&
+        myEmail() in request.resource.data.adminEmails;
+      allow delete: if false;
+
+      match /members/{username} {
+        allow read: if isMember(familyId);
+        allow create, delete: if isAdmin(familyId);
+        allow update: if isAdmin(familyId) ||
+          (isMember(familyId) &&
+           resource.data.email == myEmail() &&
+           request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(["name", "englishName", "avatar", "photo", "color"]));
+      }
+
+      match /state/{name} {
+        allow read: if isMember(familyId);
+        allow write: if isMember(familyId) &&
+          name in ["ingredients", "events", "chores", "notices"] &&
+          request.resource.data.items is list;
+      }
+
+      match /fridgePhotos/{photoId} {
+        allow read: if isMember(familyId);
+        allow create: if isMember(familyId) && request.resource.data.dataUrl is string;
+        allow delete: if isMember(familyId);
+      }
+    }
+  }
+}
