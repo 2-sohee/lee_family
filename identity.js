@@ -3,7 +3,7 @@
   "use strict";
   const authKey = "lee-family-auth", settingsKey = "lee-family-settings";
   const defaults = { familyName: "LEE_FAMILY", logo: "LF", members: [
-    {id:"suhui",name:"수희",avatar:"수희",color:"#d39a62",activeCount:2,role:"admin",active:true,username:"suhui",password:"1234"},
+    {id:"suhui",name:"소희",englishName:"SOHEE",avatar:"소희",color:"#d39a62",activeCount:2,role:"admin",active:true,username:"suhui",password:"1234"},
     {id:"mom",name:"엄마",avatar:"엄마",color:"#9a7899",activeCount:1,role:"user",active:true,username:"mom",password:"1234"},
     {id:"dad",name:"아빠",avatar:"아빠",color:"#7595ad",activeCount:1,role:"user",active:true,username:"dad",password:"1234"},
     {id:"sibling",name:"동생",avatar:"동생",color:"#6ea38f",activeCount:0,role:"user",active:true,username:"sibling",password:"1234"}
@@ -26,7 +26,7 @@
   }
   function shell() {
     const me=current(); document.title=settings.familyName; document.getElementById("page-title").textContent=`안녕하세요, ${esc(me.name)}님`; document.querySelector(".brand strong").textContent=settings.familyName; document.querySelector(".brand-mark").textContent=settings.logo||"LF";
-    document.getElementById("profile-summary").innerHTML=`<i style="background:${esc(me.color)}">${avatar(me)}</i><div><b>${esc(me.name)}</b><span>${me.role==="admin"?"가족 관리자":"가족 구성원"}</span></div><button class="logout-btn" type="button">로그아웃</button>`;
+    document.getElementById("profile-summary").innerHTML=`<i style="background:${esc(me.color)}">${avatar(me)}</i><div><b>${esc(me.englishName||me.name)}</b><span>${esc(me.name)} · ${me.role==="admin"?"가족 관리자":"가족 구성원"}</span></div><button class="logout-btn" type="button">로그아웃</button>`;
     document.querySelector(".logout-btn").onclick=()=>{localStorage.removeItem(authKey);location.reload();}; const active=settings.members.filter(m=>m.active); document.getElementById("family-card").innerHTML=`<div class="family-title">함께하는 가족 <b>${active.length}</b></div><div class="members">${active.map(m=>`<i style="background:${esc(m.color)}">${avatar(m)}</i>`).join("")}</div>`;
     const nav=document.getElementById("main-nav");nav.querySelectorAll("[data-identity-view]").forEach(n=>n.remove()); const add=(view,label,icon)=>{const b=document.createElement("button");b.className="nav-item";b.dataset.identityView=view;b.innerHTML=`<span>${icon}</span>${label}`;nav.appendChild(b);};add("profile","내 프로필","●");if(admin())add("settings","가족 설정","⚙");
   }
