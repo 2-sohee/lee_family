@@ -28,7 +28,7 @@
 
 냉장고 탭에서 사진을 올리면 Firebase AI Logic(Gemini Developer API, `src/ingredientRecognizer.js`)이 재료를 인식하고, 확인 창에서 추가할 재료를 고르고 이름·수량·보관 위치·유통기한을 고친 뒤 추가합니다. 이미 있는 재료(예: 달걀=계란)는 기본으로 선택 해제됩니다.
 
-사용하려면 Firebase Console → **AI Logic** → **시작하기** → **Gemini Developer API**를 한 번 활성화해야 합니다(Spark 무료 플랜 가능). 활성화 전에는 사진 저장은 되고 인식 시 안내 메시지가 표시됩니다.
+사용하려면 Firebase Console → **AI Logic** → **시작하기** → **Gemini Developer API**를 한 번 활성화해야 합니다(Spark 무료 플랜 가능). 활성화 전에는 사진 저장은 되고 인식 시 안내 메시지가 표시됩니다. Gemini 서버가 일시적으로 혼잡하면(500 "high demand") 다른 Gemini 모델로 자동 재시도합니다.
 
 추천 메뉴는 현재 냉장고 재료(유통기한이 지난 재료 제외)와 레시피 DB(`recipeBook`)를 동의어까지 맞춰 비교해, 보유 재료가 하나 이상인 메뉴만 보유 비율 순으로 보여줍니다. 냉장고가 비어 있으면 추천하지 않습니다.
 
