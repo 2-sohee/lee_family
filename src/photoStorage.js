@@ -30,7 +30,7 @@ function loadImage(file) {
   });
 }
 
-async function compress(file, maxDimension) {
+async function compress(file, maxDimension, targetLength = TARGET_DATA_URL_LENGTH) {
   const image = await loadImage(file);
   let dimension = maxDimension;
   let quality = 0.82;
@@ -44,7 +44,7 @@ async function compress(file, maxDimension) {
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const dataUrl = canvas.toDataURL("image/jpeg", quality);
-    if (dataUrl.length <= TARGET_DATA_URL_LENGTH) return { dataUrl, size: Math.round(dataUrl.length * 0.75) };
+    if (dataUrl.length <= targetLength) return { dataUrl, size: Math.round(dataUrl.length * 0.75) };
     dimension = Math.round(dimension * 0.75);
     quality = Math.max(0.55, quality - 0.08);
   }
@@ -56,6 +56,14 @@ export async function readPhoto(file, maxBytes = MAX_FRIDGE_BYTES) {
   const maxDimension = maxBytes === MAX_PROFILE_BYTES ? 384 : 1280;
   const { dataUrl, size } = await compress(file, maxDimension);
   return { dataUrl, name: file.name, type: "image/jpeg", size };
+}
+
+// Higher-resolution copy used only for AI recognition (never stored), so small
+// text on receipts, memos and package labels stays legible.
+export async function readRecognitionPhoto(file) {
+  validate(file, MAX_FRIDGE_BYTES);
+  const { dataUrl } = await compress(file, 2048, 2.5 * 1024 * 1024);
+  return dataUrl;
 }
 
 export const photoLimits = Object.freeze({

@@ -1,4 +1,4 @@
-# LEE_FAMILY 개발 인계 문서 (2026-09-28 기준)
+# LEE_FAMILY 개발 인계 문서 (2026-09-29 기준)
 
 다음 작업자(사람 또는 AI 모델)가 이 문서만 읽고 바로 이어서 개발할 수 있도록 정리했습니다. 구성은 다음 순서입니다.
 
@@ -8,7 +8,7 @@
 4. 기능별 구현 목적, 구현 방식, 설계 판단
 5. 코드 수정 규칙
 6. 테스트와 배포
-7. 보류된 작업 (마트 / Budget 탭)
+7. 마트 / Budget 탭 (2026-09-29 구현·배포)
 
 기존 요약 문서는 [HANDOFF.md](../HANDOFF.md), 운영·설정 방법은 [README.md](../README.md)에 있습니다. 이 문서가 가장 최신이며 가장 자세합니다.
 
@@ -18,7 +18,7 @@
 
 | 항목 | 값 |
 | --- | --- |
-| 서비스 | 가족 공유 웹앱 (냉장고·추천 메뉴·가족 일정·집안일·공지) |
+| 서비스 | 가족 공유 웹앱 (냉장고·추천 메뉴·마트·가족 일정·집안일·Budget·공지) |
 | 운영 URL | https://lee-house-0905.web.app |
 | 저장소 | `2-sohee/lee_family` (public) |
 | 스택 | Vanilla HTML/CSS/JS + Vite 7, Firebase 12 (Auth, Firestore, Hosting, AI Logic) |
@@ -26,7 +26,7 @@
 | 배포 | `main`에 push하면 GitHub Actions가 규칙 테스트 → 빌드 → Hosting과 Firestore 규칙 배포 |
 | 계정 | 시스템 관리자 `admin` / `admin!` (이름 `관리자`, 고정). 가족 계정은 관리자가 `설정`에서 생성 |
 | 현재 가족 데이터 | `families/lee` 구성원: admin(관리자), ddoing(또잉이), sora(또랑이) |
-| 보류된 작업 | 마트·Budget 탭. 구현 코드는 `wip/mart-budget` 브랜치에 보관 (7장) |
+| 외부 연동 | 토스뱅크 자동 조회·쿠팡/컬리 장바구니 연동은 불가 판정으로 제외 (7.4) |
 
 ### 작업 이력
 
@@ -35,7 +35,8 @@
 | #1 | Firebase Auth·Firestore·Hosting 배포, GitHub Actions CI |
 | #2 | 모바일 하단 탭 수정, 냉장고 기반 추천, AI 사진 재료 인식, 관리자 고정·`설정` 페이지 |
 | #3 | 가족 일정 기간(시작~종료) 등록, AI 인식 재시도·오류 안내 개선 |
-| 이번 PR | 추천 메뉴 색상·5개 제한, 냉장고 재료 수정·삭제, 인식 후 사진 자동 정리, 일정 앞뒤 3개월, AI 공통 모듈 분리, E2E 스모크 테스트, 이 문서 |
+| #4 | 추천 메뉴 색상·5개 제한, 냉장고 재료 수정·삭제, 인식 후 사진 자동 정리, 일정 앞뒤 3개월, AI 공통 모듈 분리, E2E 스모크 테스트, 이 문서 |
+| 이번 PR | 마트·Budget 탭(Budget은 직접 입력 전용), 글씨가 많은 사진(영수증·메모·라벨) 인식 강화, 마트·Budget E2E |
 
 ---
 
@@ -92,11 +93,13 @@ flowchart LR
 | `src/photoStorage.js` | 사진을 축소하고 JPEG로 압축합니다(Firestore 1MiB 문서 제한 대응). 최대 4장입니다 |
 | `src/aiClient.js` | **(이번 추가)** Gemini 모델 체인, 재시도와 폴백, HTTP 상태별 한국어 오류 메시지를 맡습니다 |
 | `src/ingredientRecognizer.js` | 사진 → 재료 JSON(responseSchema)을 만들고, 정규화와 중복 제거를 합니다 |
+| `src/priceEstimator.js` | 마트 품목의 인터넷 최저가 추정 (7.2) |
+| `household.js` | 마트·Budget 탭 뷰·모달·저장 로직. `init(ctx)`로 app.js 헬퍼를 주입받음 (7.2) |
 | `identity.js` | 상단 프로필 영역과 브랜드, `내 프로필`(user)과 `설정`(admin) 화면을 맡습니다. `familyOnly()`로 관리자를 공유 영역에서 제외합니다 |
-| `app.js` | 대시보드, 냉장고, 추천 메뉴, 일정, 집안일, 공지 화면을 렌더링합니다. 모든 뷰와 모달이 여기에 있습니다 |
+| `app.js` | 대시보드, 냉장고, 추천 메뉴, 일정, 집안일, 공지 화면을 렌더링합니다. 마트·Budget은 `household.js`에 위임합니다 |
 | `styles.css` | 전체 스타일. 파일 끝에 기능별 블록이 순서대로 추가되어 있습니다(모바일 블록 → 인식/추천 → 이번 작업) |
 | `firestore.rules` | 보안 규칙. 테스트는 `tests/firestore.rules.test.js`에 있습니다 |
-| `tests/e2e/smoke.e2e.cjs` | **(이번 추가)** 모바일 E2E 스모크 테스트 (6.2) |
+| `tests/e2e/smoke.e2e.cjs`, `tests/e2e/mart-budget.e2e.cjs` | 모바일 E2E 테스트 (6.2) |
 
 ### 2.3 전역 브리지
 
@@ -107,7 +110,8 @@ flowchart LR
 | `window.familyCloud` | bootstrap/cloud | `state`, `settings`, `saveState()`, `onChange()`, 계정 API |
 | `window.familyIdentity` | identity.js | `current()`, `isAdmin()`, `members()` (관리자 제외 목록) |
 | `window.familyRecognizer` | bootstrap | `recognize(dataUrls)` → `[{name, emoji, qty, place, expiryDays, confidence}]` |
-| `window.familyPhotoStorage` | bootstrap | `photoLimits`, `readPhoto(file)` |
+| `window.familyPhotoStorage` | bootstrap | `photoLimits`, `readPhoto(file)`, `readRecognitionPhoto(file)` |
+| `window.familyPricer` | bootstrap | `estimate(items)` → 최저가 추정 (priceEstimator 지연 로드) |
 | `window.familyToast(msg)` | bootstrap | 하단 토스트 |
 | `window.layout()` | app.js | 현재 뷰를 다시 렌더링 |
 
@@ -136,6 +140,7 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
 | `families/{id}/state/events` | `{items:[{id, title, date, endDate?(기간 일정), time?, owner, ownerId}]}` |
 | `families/{id}/state/chores` | `{items:[{id, title, owner, ownerId, due, repeat, done}]}` |
 | `families/{id}/state/notices` | `{items:[{id, title, body, owner, ownerId, private, password, important}]}` |
+| `families/{id}/state/shopping` · `purchases` · `budget` | 마트·Budget 데이터 (7.2 데이터 모델) |
 | `families/{id}/fridgePhotos/{photoId}` | `dataUrl`(압축 JPEG), `name`, `type`, `size`, `order`, `createdBy`, `createdAt` |
 
 규칙 요약 (`firestore.rules`):
@@ -148,7 +153,7 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
   - `roleAllowed()`로, 앱에서는 admin 역할 계정을 만들 수 없습니다.
   - 본인은 `name, englishName, avatar, photo, color` 필드만 수정할 수 있습니다.
   - 관리자 계정은 삭제할 수 없습니다.
-- **state 문서:** 구성원이 읽고 씁니다. 문서 이름은 허용 목록(`ingredients, events, chores, notices`)만 가능합니다. **새 state 문서를 추가하면 규칙, `cloud.js`의 `STATE_COLLECTIONS`, 테스트를 함께 바꿔야 합니다.**
+- **state 문서:** 구성원이 읽고 씁니다. 문서 이름은 허용 목록(`ingredients, events, chores, notices, shopping, purchases, budget`)만 가능합니다. **새 state 문서를 추가하면 규칙, `cloud.js`의 `STATE_COLLECTIONS`, 테스트를 함께 바꿔야 합니다.**
 - **fridgePhotos:** 구성원이 생성, 읽기, 삭제를 할 수 있습니다.
 
 ---
@@ -215,6 +220,24 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
   - 프롬프트는 한국어이고, "보이는 것만, 비식품 제외"를 지시합니다.
   - `normalize()`는 이름으로 중복을 제거하고, 길이를 제한하고, `expiryDays`를 0~365로 맞춥니다.
   - 요청당 사진은 최대 4장입니다.
+
+#### 4.4.0 글씨가 많은 사진 인식 (2026-09-29)
+
+- **목적:** 영수증, 온라인 주문내역 캡처, 장보기 메모, 제품 라벨처럼 글씨가 많은 사진에서도 재료를 빠짐없이 뽑습니다.
+- **해상도:**
+  - 저장용 사진은 Firestore 한도 때문에 1280px, 약 700KB로 줄어서 작은 글씨가 뭉개질 수 있습니다.
+  - 그래서 업로드할 때 `readRecognitionPhoto(file)`로 **인식 전용 고해상도 사본**(최대 2048px, 약 2.5MB 이하)을 따로 만듭니다.
+  - 이 사본은 `app.js`의 `recognitionImages` Map(키: 저장본 dataUrl)에 메모리로만 보관하고 Firestore에는 저장하지 않습니다.
+  - 새로고침한 뒤 다시 인식하면 저장본으로 대신합니다.
+- **프롬프트 (`ingredientRecognizer.js`의 `PROMPT`):**
+  - 글자를 한 줄씩 끝까지 읽게 합니다.
+  - 브랜드·용량을 뗀 일반 재료명으로 바꿉니다(서울우유 → 우유, 비비고 왕교자 → 만두). 추천 메뉴 매칭률이 올라갑니다.
+  - 수량 칸, `x2`, `*3` 표기를 반영합니다.
+  - 가격·할인·합계·카드·봉투·생활용품 줄은 제외합니다.
+  - 흐린 글자는 confidence 0.5 미만으로 표시하게 합니다.
+- **UI:** confidence 0.5 미만 항목은 기본으로 선택 해제하고 `⚠ 글씨가 흐려 확인이 필요해요`를 표시합니다.
+- **검증 (합성 영수증 40줄 = 식품 35 + 비식품 5):** 식품 35개를 모두 인식했고 비식품 5개는 제외됐습니다. 이전 프롬프트는 "진라면", "비비고 왕교자", "코카콜라"처럼 브랜드명을 그대로 두는 경우가 있었고, 새 프롬프트는 일반 재료명과 용량이 붙은 수량(`1L 2개`)을 돌려줍니다.
+- **한계:** 손글씨가 심하게 흘려 쓰였거나, 빛 반사나 구김이 심한 사진은 여전히 누락될 수 있습니다. 확인 창에서 고쳐 쓰는 흐름을 유지합니다.
 
 #### 4.4.1 "켰는데 안 됐던" 원인 (기록)
 
@@ -288,7 +311,7 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
 npm test   # firebase emulators:exec --only firestore … node --test tests/firestore.rules.test.js
 ```
 
-### 6.2 E2E 스모크 테스트 (`tests/e2e/smoke.e2e.cjs`, 로컬 전용)
+### 6.2 E2E 테스트 (`tests/e2e/*.e2e.cjs`, 로컬 전용)
 
 iPhone 14 에뮬레이션으로 다음을 검증합니다.
 
@@ -305,6 +328,7 @@ npm i --no-save playwright-core firebase-admin   # 최초 1회 (Edge 채널 사�
 npm run emulators                                 # 터미널 1
 npx vite --port 5179 --strictPort --host 127.0.0.1 # 터미널 2
 node tests/e2e/smoke.e2e.cjs                      # 터미널 3 → "ALL OK"
+node tests/e2e/mart-budget.e2e.cjs                # 마트·Budget 흐름 → "ALL OK"
 ```
 
 - 스크립트가 에뮬레이터에 admin/ddoing 계정과 `families/lee` 데이터를 직접 넣습니다(`seed()`).
@@ -325,9 +349,9 @@ node tests/e2e/smoke.e2e.cjs                      # 터미널 3 → "ALL OK"
 
 ---
 
-## 7. 보류된 작업: 마트 / Budget 탭
+## 7. 마트 / Budget 탭
 
-사용자가 요청했지만 **이번 배포에서는 빼기로 결정**했습니다(2026-09-28). 전체 구현은 `wip/mart-budget` 브랜치(커밋 `57ed7f8`)에 있습니다. 이 브랜치는 이번 작업 **이전**의 main을 기준으로 하므로, 다시 적용할 때는 아래 체크리스트대로 현재 main에 옮기세요.
+2026-09-28에는 보류해 `wip/mart-budget` 브랜치(커밋 `57ed7f8`)에 보관했습니다. 2026-09-29 사용자 요청으로 현재 main에 옮겨 **구현·배포**했습니다. 이때 Budget은 토스뱅크 자동 조회 없이 **가족이 직접 입력하는 방식만** 쓰도록 바꿨습니다(계좌번호 입력과 연결 계좌 카드 제거).
 
 ### 7.1 사용자 요구사항 (원문 요약)
 
@@ -341,12 +365,12 @@ node tests/e2e/smoke.e2e.cjs                      # 터미널 3 → "ALL OK"
 
 **Budget**
 
-1. 토스뱅크 특정 계좌(계좌번호 직접 입력)를 10분마다 조회해 잔액을 표시합니다. **Plan B:** 조회가 안 되면 가족이 현재 잔액을 직접 추가·수정합니다.
+1. 가족 구성원이 현재 잔액을 직접 추가·수정합니다. (처음 요청은 토스뱅크 10분 주기 자동 조회였지만, 7.4 조사 결과에 따라 2026-09-29 요청에서 제외됐습니다.)
 2. 최대 예산은 기본 300,000원이고, 이 값 대비 잔액 비율만큼 돼지 저금통을 채워 보여줍니다.
 3. 탭 최상단 가운데에 현재 잔액이 쓰인 돼지 저금통을 둡니다.
 4. 잔액이 10% 미만이면 Budget 탭 최상단에 경고 띠를 표시합니다.
 
-### 7.2 `wip/mart-budget`의 구현 설계
+### 7.2 구현 설계
 
 **파일 구성**
 
@@ -354,7 +378,6 @@ node tests/e2e/smoke.e2e.cjs                      # 터미널 3 → "ALL OK"
 | --- | --- |
 | `household.js` (신규, 약 30kB) | 마트·Budget 뷰, 모달, 저장 로직. `init(ctx)`로 app.js의 헬퍼를 주입받는 구조(app.js 전역에 의존하지 않음) |
 | `src/priceEstimator.js` (신규) | `estimatePrices(items)` → `{prices:[{id, unitPrice, total, store, url, note, source}], suggestions}` |
-| `src/aiClient.js` | 이번 main에 이미 들어간 공통 모듈과 같음 |
 | `app.js` | 아래 "app.js 연결 지점" 참고 |
 | `index.html` | nav에 `마트`(`data-view="mart"`, 장바구니 아이콘), `Budget`(`data-view="budget"`, 짧은 라벨 `예산`, 돼지 아이콘) 추가 |
 | `identity.js` | `add(view, label, icon, short)`로 짧은 라벨 지원(`내 프로필` → 모바일 `MY`). 8개 탭이 360px에 들어가도록 |
@@ -405,34 +428,30 @@ state.budget    = [{ id, balance, max, account, note, at:ms, by, source:"manual"
 
 **Budget 동작**
 
-- `budgetStatus()`는 최신 설정 항목에서 max와 account를, `settingsOnly`가 아닌 최신 항목에서 잔액을 읽습니다. 설정만 먼저 저장해도 0원 경고가 뜨지 않게 하기 위해서입니다.
+- `budgetStatus()`는 최신 설정 항목에서 max를(account 필드는 예전 데이터 호환용으로만 남아 있음), `settingsOnly`가 아닌 최신 항목에서 잔액을 읽습니다. 설정만 먼저 저장해도 0원 경고가 뜨지 않게 하기 위해서입니다.
 - **돼지 저금통:** 인라인 SVG에 clipPath(몸통과 코)를 두고, 액체 rect의 높이를 `잔액/최대` 비율로 정합니다.
   - 색: 50% 이상 초록, 10~50% 노랑, 10% 미만 빨강.
   - 몸통 위에 잔액과 %를 텍스트로 씁니다.
 - **경고 띠:** 잔액이 최대의 10% 미만이면 탭 최상단에 `.budget-alert`(빨간 사선 띠, sticky)를 표시하고, 하단 탭 Budget 아이콘에도 빨간 점(`.nav-alert`)을 표시합니다.
 - **입력과 설정:**
   - `💰 잔액 입력`은 새 기록을 추가합니다. 변경 내역에서 기록을 수정·삭제할 수 있습니다.
-  - `⚙ 예산·계좌 설정`에서 최대 예산(기본 300,000원)과 토스뱅크 계좌번호를 넣습니다. 화면에는 뒤 4자리만 보이게 마스킹합니다.
-- **토스 자동 조회:** 불가(7.4)라서 UI에 "직접 입력 모드"를 안내합니다.
+  - `⚙ 최대 예산 설정`에서 최대 예산(기본 300,000원)을 바꿉니다.
+  - 다른 가족 기기에는 Firestore 실시간 동기화로 바로 반영됩니다.
 
 **검증 상태:** iPhone 14 E2E로 전체 흐름을 통과했습니다(품목 추가, 분류 자동 선택, stub 가격 합계, 복사 텍스트, 구매 → 냉장고 수량 합산 8개, 최근 장본 날짜, 잔액 입력 → 경고 띠와 nav 점, 360px nav 8개). 실제 Gemini 가격 추정은 curl로 합리적인 값이 나오는 것을 확인했습니다(서울우유 1L 2,850원, 쿠팡 등).
 
-### 7.3 다시 적용하는 체크리스트
+### 7.3 적용 기록과 남은 결정 (2026-09-29)
 
-1. `git checkout -b <new> origin/main` 후 `git checkout origin/wip/mart-budget -- household.js src/priceEstimator.js`
-2. `index.html`, `identity.js`, `src/cloud.js`, `firestore.rules`, `tests/firestore.rules.test.js`, `src/bootstrap.js`를 wip 브랜치와 비교(diff)해서 옮깁니다. 이 파일들은 main에서 달라진 점이 적어 그대로 가져와도 됩니다.
-3. `app.js`는 **wip 버전을 통째로 덮어쓰지 마세요.** 이번 작업의 ±3개월 일정, 5개 제한, 초록 칩 변경이 wip에는 없거나 일부만 있습니다. 위의 "app.js 연결 지점"만 치환 스크립트로 넣으세요.
-4. `styles.css`에는 wip 브랜치 끝의 마트·Budget 규칙을 이어 붙입니다.
-5. 테스트:
-   - `npm test`와 `npm run build`
-   - 스모크 E2E에 마트·Budget 단계 추가(wip 커밋의 흐름을 참고)
-   - 360px에서 탭 8개가 넘치지 않는지 확인
-6. 결정이 필요한 점:
-   - 가격을 실제 검색 기반으로 할지: 유료 Gemini grounding을 쓸지, 네이버 쇼핑 검색 API와 서버를 둘지.
-   - Budget 탭 이름과 순서.
-   - 관리자에게도 마트·Budget을 보여줄지(현재 wip는 보여줌, 요청자 목록에서는 제외).
+- 적용 방법:
+  1. wip 브랜치의 `household.js`, `src/priceEstimator.js`와 연결 파일(`index.html`, `identity.js`, `src/cloud.js`, `firestore.rules`, 규칙 테스트, `src/bootstrap.js`)을 그대로 가져왔습니다.
+  2. `app.js`에는 연결 지점만 치환해 넣었습니다(±3개월 일정 등 최신 수정 보존).
+  3. `styles.css`에는 마트·Budget 규칙만 이어 붙였습니다(토스 계좌 카드와 쇼핑 링크 스타일 제외).
+- 검증: `npm test`, `npm run build`, `tests/e2e/smoke.e2e.cjs`, `tests/e2e/mart-budget.e2e.cjs` 모두 통과(360px에서 탭 8개).
+- 남은 결정:
+  - 가격을 실제 검색 기반으로 바꿀지: 유료 Gemini grounding을 쓸지, 네이버 쇼핑 검색 API와 서버를 둘지.
+  - 관리자에게도 마트·Budget을 보여줄지(현재는 보여줌, 요청자 목록에서는 제외).
 
-### 7.4 외부 연동 조사 결과 (2026-09-28, 결론: 이번에는 하지 않음)
+### 7.4 외부 연동 조사 결과 (2026-09-28, 결론: 하지 않음)
 
 **토스뱅크 잔액 10분 주기 조회: 공식 경로로는 불가**
 

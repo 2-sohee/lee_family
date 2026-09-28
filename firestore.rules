@@ -63,7 +63,7 @@ service cloud.firestore {
       match /state/{name} {
         allow read: if isMember(familyId);
         allow write: if isMember(familyId) &&
-          name in ["ingredients", "events", "chores", "notices"] &&
+          name in ["ingredients", "events", "chores", "notices", "shopping", "purchases", "budget"] &&
           request.resource.data.items is list;
       }
 
