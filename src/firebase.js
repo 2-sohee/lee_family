@@ -1,8 +1,8 @@
-import { getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getApp, getApps, initializeApp } from "firebase/app";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
-const config = {
+export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -11,21 +11,28 @@ const config = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const hasConfig = Object.values(config).every(Boolean);
-const app = hasConfig
-  ? getApps()[0] ?? initializeApp(config)
-  : null;
+export const familyId = import.meta.env.VITE_FAMILY_ID || "lee";
+export const loginEmailDomain = import.meta.env.VITE_LOGIN_EMAIL_DOMAIN || "lee-family.example.com";
+export const emulatorHost = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || "";
+
+const required = ["apiKey", "authDomain", "projectId", "appId"];
+const hasConfig = required.every(name => Boolean(firebaseConfig[name]));
+const app = hasConfig ? (getApps().length ? getApp() : initializeApp(firebaseConfig)) : null;
 
 export const firebaseReady = Boolean(app);
 export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;
 
+if (app && emulatorHost) {
+  connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
+  connectFirestoreEmulator(db, emulatorHost, 8080);
+}
+
 export function requireFirebase() {
   if (!app || !auth || !db) {
     throw new Error(
-      "Firebase is not configured. Copy .env.example to .env.local and provide all VITE_FIREBASE_* values."
+      "Firebase is not configured. Copy .env.example to .env.local and provide the VITE_FIREBASE_* values."
     );
   }
-
   return { app, auth, db };
 }

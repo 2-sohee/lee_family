@@ -1,4 +1,4 @@
-name: Build and deploy Firebase Hosting
+name: Build and deploy Firebase
 
 on:
   push:
@@ -8,6 +8,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
@@ -20,9 +24,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+
+      - name: Set up Java (Firestore emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Test Firestore security rules
+        run: npm test
 
       - name: Build frontend
         run: npm run build
@@ -34,10 +48,12 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          channelId: live
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy Hosting and Firestore rules
+        run: npx firebase deploy --only hosting,firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
