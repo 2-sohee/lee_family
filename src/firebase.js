@@ -36,3 +36,5 @@ export function requireFirebase() {
   }
   return { app, auth, db };
 }
+
+export const firebaseApp = app;

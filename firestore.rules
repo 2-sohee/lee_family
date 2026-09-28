@@ -32,24 +32,28 @@ service cloud.firestore {
         data.memberEmails.hasAll(data.adminEmails);
     }
 
+    // Accounts created from the app are always regular users; only the fixed
+    // system admin (provisioned server-side) may hold the admin role.
+    function roleAllowed(familyId, data) {
+      return !("role" in data) || data.role != "admin" ||
+        data.email in get(familyPath(familyId)).data.adminEmails;
+    }
+
     match /families/{familyId} {
-      // Signed-in users may learn that a family does not exist yet (first setup).
-      allow get: if isMember(familyId) || (signedIn() && resource == null);
+      allow get: if isMember(familyId);
       allow list: if false;
-      // First setup: the creator becomes the only member and administrator.
-      allow create: if signedIn() &&
-        request.resource.data.memberEmails == [myEmail()] &&
-        request.resource.data.adminEmails == [myEmail()];
-      // Administrators cannot remove their own admin access.
+      // The family workspace and its admin are provisioned server-side only.
+      allow create, delete: if false;
+      // The admin list is fixed; admins manage members but cannot change admins.
       allow update: if isAdmin(familyId) &&
         validAccessLists(request.resource.data) &&
-        myEmail() in request.resource.data.adminEmails;
-      allow delete: if false;
+        request.resource.data.adminEmails == resource.data.adminEmails;
 
       match /members/{username} {
         allow read: if isMember(familyId);
-        allow create, delete: if isAdmin(familyId);
-        allow update: if isAdmin(familyId) ||
+        allow delete: if isAdmin(familyId) && !(resource.data.email in get(familyPath(familyId)).data.adminEmails);
+        allow create: if isAdmin(familyId) && roleAllowed(familyId, request.resource.data);
+        allow update: if (isAdmin(familyId) && roleAllowed(familyId, request.resource.data)) ||
           (isMember(familyId) &&
            resource.data.email == myEmail() &&
            request.resource.data.diff(resource.data).affectedKeys()

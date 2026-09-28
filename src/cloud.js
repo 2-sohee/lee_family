@@ -56,36 +56,6 @@ function accessLists(members) {
   };
 }
 
-export async function familyExists() {
-  try {
-    const snapshot = await getDoc(familyRef());
-    return snapshot.exists();
-  } catch (error) {
-    if (error.code === "permission-denied") return true;
-    throw error;
-  }
-}
-
-// Creates the family workspace with the signed-in user as its first administrator.
-export async function createFamily(user, { name, familyName }) {
-  const email = user.email.toLowerCase();
-  const username = emailToUsername(email);
-  await setDoc(familyRef(), {
-    familyName: String(familyName || "LEE_FAMILY").trim() || "LEE_FAMILY",
-    logo: "LF",
-    logoPhoto: "",
-    themeColor: DEFAULT_THEME,
-    memberEmails: [email],
-    adminEmails: [email],
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  });
-  await setDoc(memberRef(username), {
-    ...memberDefaults({ username, name: name || "관리자", englishName: "ADMIN", avatar: "관리", role: "admin", order: 0 }),
-    createdAt: serverTimestamp()
-  });
-}
-
 function firstSnapshot(reference, onData, onError) {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -289,7 +259,8 @@ export async function startCloud(user) {
     return reportWrite(batch.commit());
   }
 
-  async function createMember({ username: rawUsername, password, name, role }) {
+  // Family accounts are always regular users; the single system admin is provisioned server-side.
+  async function createMember({ username: rawUsername, password, name }) {
     if (!isAdmin()) throw new CloudAccessError("forbidden", "관리자만 계정을 만들 수 있어요.");
     const newUsername = normalizeUsername(rawUsername);
     // Creating an account for an existing profile acts as a password reset
@@ -307,7 +278,7 @@ export async function startCloud(user) {
     const member = memberDefaults({
       username: newUsername,
       name,
-      role,
+      role: "user",
       order: settings.members.length ? Math.max(...settings.members.map(m => m.order || 0)) + 1 : 0
     }, settings.members.length);
     const members = [...settings.members, member];
