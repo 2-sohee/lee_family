@@ -15,6 +15,12 @@ import { auth, emulatorHost, firebaseConfig, loginEmailDomain, requireFirebase }
 
 export const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{1,29}$/;
 export const MIN_PASSWORD_LENGTH = 6;
+// Read-only guest login. Visitors type guest/guest (or press the guest button);
+// Firebase needs 6+ characters, so the real password is derived here. Firestore
+// rules, not this password, keep the guest read-only.
+export const GUEST_USERNAME = "guest";
+export const GUEST_PASSWORD = "guest";
+const GUEST_AUTH_PASSWORD = "guest-lee-view";
 
 export function normalizeUsername(value) {
   return String(value || "").trim().toLowerCase();
@@ -67,7 +73,12 @@ export const authService = {
 
   signIn(username, password) {
     requireFirebase();
-    return signInWithEmailAndPassword(auth, usernameToEmail(username), password);
+    const isGuest = normalizeUsername(username) === GUEST_USERNAME && password === GUEST_PASSWORD;
+    return signInWithEmailAndPassword(auth, usernameToEmail(username), isGuest ? GUEST_AUTH_PASSWORD : password);
+  },
+
+  signInGuest() {
+    return this.signIn(GUEST_USERNAME, GUEST_PASSWORD);
   },
 
   signUpSelf(username, password) {

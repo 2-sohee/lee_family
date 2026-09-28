@@ -3,19 +3,21 @@ import { friendlyAiError, generateWithFallback } from "./aiClient.js";
 
 export const PLACES = ["냉장실", "냉동실", "실온"];
 
+// Short keys keep the JSON output small; output tokens dominate recognition latency.
 const responseSchema = Schema.object({
   properties: {
     items: Schema.array({
       items: Schema.object({
         properties: {
-          name: Schema.string({ description: "한국어 재료 이름 (예: 계란, 대파, 방울토마토)" }),
-          emoji: Schema.string({ description: "재료를 나타내는 이모지 1개" }),
-          qty: Schema.string({ description: "보이는 수량과 단위 (예: 6개, 1팩, 500ml, 반 통)" }),
-          place: Schema.enumString({ enum: PLACES, description: "권장 보관 위치" }),
-          expiryDays: Schema.integer({ description: "오늘부터 권장 소비 기한까지 남은 일수 추정치" }),
-          confidence: Schema.number({ description: "0~1 사이 인식 확신도" })
+          n: Schema.string({ description: "한국어 재료 이름 (예: 계란, 대파, 방울토마토)" }),
+          e: Schema.string({ description: "재료를 나타내는 이모지 1개" }),
+          q: Schema.string({ description: "수량과 단위 (예: 6개, 1팩, 1L 2개)" }),
+          p: Schema.enumString({ enum: PLACES, description: "권장 보관 위치" }),
+          d: Schema.integer({ description: "오늘부터 권장 소비 기한까지 남은 일수 추정치" }),
+          c: Schema.number({ description: "0~1 인식 확신도. 0.8 미만일 때만 넣기" })
         },
-        optionalProperties: ["confidence"]
+        optionalProperties: ["c"],
+        propertyOrdering: ["n", "e", "q", "p", "d", "c"]
       })
     })
   }
@@ -37,7 +39,9 @@ const PROMPT = `너는 가정용 냉장고 정리 도우미야. 첨부된 사진
 - 그릇, 용기, 냉장고 부품 같은 비식품은 제외해.
 - 이름은 한국어로 짧게, place는 냉장실/냉동실/실온 중 하나로 적어 (냉동식품은 냉동실, 쌀·라면·통조림·양념은 실온).
 - expiryDays는 구입 직후 기준 일반적인 권장 소비 기한으로 추정해.
-- 재료가 하나도 없으면 items를 빈 배열로 반환해.`;
+- 재료가 하나도 없으면 items를 빈 배열로 반환해.
+
+[출력 형식] items의 각 항목: n=재료명, e=이모지 1개, q=수량, p=보관 위치, d=권장 소비 기한까지 일수, c=확신도(0.8 미만일 때만 넣고 확실하면 생략).`;
 
 function toPart(dataUrl) {
   const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(String(dataUrl || ""));
@@ -47,8 +51,9 @@ function toPart(dataUrl) {
 
 function normalize(items) {
   const seen = new Map();
-  for (const raw of Array.isArray(items) ? items : []) {
-    const name = String(raw?.name || "").trim().slice(0, 40);
+  for (const item of Array.isArray(items) ? items : []) {
+    const raw = { name: item?.n ?? item?.name, emoji: item?.e ?? item?.emoji, qty: item?.q ?? item?.qty, place: item?.p ?? item?.place, expiryDays: item?.d ?? item?.expiryDays, confidence: item?.c ?? item?.confidence };
+    const name = String(raw.name || "").trim().slice(0, 40);
     if (!name) continue;
     const key = name.replace(/\s+/g, "");
     if (seen.has(key)) continue;
@@ -70,6 +75,7 @@ export async function recognizeIngredients(dataUrls) {
   try {
     const response = await generateWithFallback(parts, {
       key: "recognize",
+      timeout: 40000,
       options: { generationConfig: { responseMimeType: "application/json", responseSchema, temperature: 0.2 } }
     });
     return normalize(JSON.parse(response.text() || "{}").items);

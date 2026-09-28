@@ -4,11 +4,15 @@ import { startCloud } from "./cloud.js";
 import { photoLimits, readPhoto, readRecognitionPhoto } from "./photoStorage.js";
 
 window.familyPhotoStorage = Object.freeze({ photoLimits, readPhoto, readRecognitionPhoto });
+// Guests may browse but must not spend the family's shared AI quota.
+const aiBlocked = () => window.familyCloud?.isGuest
+  ? Promise.reject(new Error("게스트는 AI 기능을 사용할 수 없어요."))
+  : null;
 window.familyRecognizer = Object.freeze({
-  recognize: dataUrls => import("./ingredientRecognizer.js").then(module => module.recognizeIngredients(dataUrls))
+  recognize: dataUrls => aiBlocked() || import("./ingredientRecognizer.js").then(module => module.recognizeIngredients(dataUrls))
 });
 window.familyPricer = Object.freeze({
-  estimate: items => import("./priceEstimator.js").then(module => module.estimatePrices(items))
+  estimate: items => aiBlocked() || import("./priceEstimator.js").then(module => module.estimatePrices(items))
 });
 document.documentElement.dataset.firebase = firebaseReady ? "configured" : "not-configured";
 
@@ -47,7 +51,7 @@ function busy(form, isBusy) {
 }
 
 function loginScreen(notice = "") {
-  screen(`<form id="login-form"><div class="brand-mark">LF</div><p class="eyebrow">FAMILY HUB</p><h1>LEE_FAMILY</h1><p class="subtitle">관리자가 만들어 준 가족 계정으로 로그인하세요.</p><label>아이디<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="예: mom"></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label><p class="login-error" id="login-error" role="alert">${esc(notice)}</p><button class="primary">로그인</button><small class="login-help">계정이 없나요? 가족 관리자에게 계정 생성을 요청해주세요.</small></form>`);
+  screen(`<form id="login-form"><div class="brand-mark">LF</div><p class="eyebrow">FAMILY HUB</p><h1>LEE_FAMILY</h1><p class="subtitle">관리자가 만들어 준 가족 계정으로 로그인하세요.</p><label>아이디<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="예: mom"></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label><p class="login-error" id="login-error" role="alert">${esc(notice)}</p><button class="primary">로그인</button><small class="login-help">계정이 없나요? 가족 관리자에게 계정 생성을 요청해주세요.</small><div class="guest-entry"><span>게스트로 방문하셨나요?</span><button class="secondary" type="button" data-guest-login>게스트로 둘러보기</button><small>구경만 가능해요 · 아이디/비밀번호 guest</small></div></form>`);
   const form = document.getElementById("login-form");
   form.onsubmit = async event => {
     event.preventDefault();
@@ -58,6 +62,17 @@ function loginScreen(notice = "") {
     } catch (error) {
       busy(form, false);
       document.getElementById("login-error").textContent = friendlyError(error);
+    }
+  };
+  form.querySelector("[data-guest-login]").onclick = async () => {
+    busy(form, true);
+    try {
+      await authService.signInGuest();
+    } catch (error) {
+      busy(form, false);
+      document.getElementById("login-error").textContent = error?.code === "auth/invalid-credential"
+        ? "게스트 계정이 아직 준비되지 않았어요. 관리자에게 문의해주세요."
+        : friendlyError(error);
     }
   };
 }
@@ -74,6 +89,7 @@ async function startApp(cloud, user) {
   });
   root().innerHTML = "";
   document.body.classList.remove("auth-pending");
+  if (cloud.isGuest) (await import("./guest.js")).enableGuestMode({ toast });
   await import("../identity.js");
   await import("../app.js");
 }

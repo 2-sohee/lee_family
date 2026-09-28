@@ -9,7 +9,7 @@ import {
   updateDoc,
   writeBatch
 } from "firebase/firestore";
-import { authService, emailToUsername, normalizeUsername, usernameToEmail } from "./auth.js";
+import { GUEST_USERNAME, authService, emailToUsername, normalizeUsername, usernameToEmail } from "./auth.js";
 import { db, familyId } from "./firebase.js";
 
 export const STATE_COLLECTIONS = Object.freeze(["ingredients", "events", "chores", "notices", "shopping", "purchases", "budget"]);
@@ -115,10 +115,16 @@ export async function startCloud(user) {
     throw error;
   });
 
+  // Guests are listed in the family's guestEmails: they can read everything but never write.
+  const hasAccess = data => (data.memberEmails || []).includes(email) || (data.guestEmails || []).includes(email);
+  let isGuest = false;
+
   try {
     const familySnapshot = await getDoc(familyRef());
     if (!familySnapshot.exists()) throw new CloudAccessError("no-family", "가족 정보가 아직 만들어지지 않았어요.");
-    if (!(familySnapshot.data().memberEmails || []).includes(email)) {
+    const familyData = familySnapshot.data();
+    isGuest = !(familyData.memberEmails || []).includes(email) && (familyData.guestEmails || []).includes(email);
+    if (!hasAccess(familyData)) {
       throw new CloudAccessError("not-member", "이 계정은 가족 구성원으로 등록되어 있지 않아요.");
     }
   } catch (error) {
@@ -130,7 +136,7 @@ export async function startCloud(user) {
 
   unsubscribers.push(await firstSnapshot(familyRef(), snapshot => {
     const data = snapshot.data() || {};
-    if (!(data.memberEmails || []).includes(email)) {
+    if (!hasAccess(data)) {
       emit("revoked");
       return;
     }
@@ -181,10 +187,12 @@ export async function startCloud(user) {
     emit("state", "fridgePhotos");
   }, handleListenerError));
 
-  const me = () => settings.members.find(member => member.username === username);
+  const guestProfile = Object.freeze({ id: username, username, email, name: "게스트", englishName: "GUEST", avatar: "👀", photo: "", color: "#8a8f98", role: "guest", active: true });
+  const me = () => isGuest ? guestProfile : settings.members.find(member => member.username === username);
   const isAdmin = () => me()?.role === "admin" && me()?.active;
 
   function saveState() {
+    if (isGuest) return Promise.resolve();
     const writes = [];
     for (const name of STATE_COLLECTIONS) {
       const items = clean(Array.isArray(state[name]) ? state[name] : []);
@@ -229,6 +237,7 @@ export async function startCloud(user) {
   }
 
   function saveProfile(member) {
+    if (isGuest) return Promise.reject(new CloudAccessError("forbidden", "게스트는 구경만 할 수 있어요."));
     const changes = {};
     SELF_EDITABLE_MEMBER_FIELDS.forEach(field => {
       changes[field] = String(member[field] ?? "");
@@ -263,6 +272,7 @@ export async function startCloud(user) {
   async function createMember({ username: rawUsername, password, name }) {
     if (!isAdmin()) throw new CloudAccessError("forbidden", "관리자만 계정을 만들 수 있어요.");
     const newUsername = normalizeUsername(rawUsername);
+    if (newUsername === GUEST_USERNAME) throw new CloudAccessError("invalid", "guest는 게스트 전용 아이디예요.");
     // Creating an account for an existing profile acts as a password reset
     // after the old login was deleted in the Firebase console.
     const existing = settings.members.find(member => member.username === newUsername);
@@ -304,6 +314,7 @@ export async function startCloud(user) {
     familyId,
     username,
     email,
+    isGuest,
     settings,
     state,
     me,

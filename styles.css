@@ -171,3 +171,8 @@ button.danger{border:1px solid rgba(217,81,81,.4);background:#fff5f5;color:var(-
   .shop-missing{margin-left:0}
   .nav-item{font-size:9.5px;padding:5px 0}
 }
+
+/* Guest (read-only) mode */
+.guest-entry{display:grid;gap:6px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);text-align:center;font-size:13px;color:var(--ink)}.guest-entry .secondary{width:100%}.guest-entry small{color:var(--muted);font-size:11px}
+.guest-banner{position:sticky;top:0;z-index:900;padding:8px 14px;background:#fff4d6;border-bottom:1px solid #f0d28a;color:#6b5314;font-size:12px;font-weight:600;text-align:center}
+.guest-mode [data-modal],.guest-mode [data-photo],.guest-mode [data-recognize],.guest-mode [data-shop-add],.guest-mode [data-shop-price],.guest-mode [data-budget-balance],.guest-mode [data-budget-settings],.guest-mode .row-actions,.guest-mode [data-delete],.guest-mode [data-edit-ingredient],.guest-mode [data-remove-photo],.guest-mode [data-shop-missing]{display:none!important}

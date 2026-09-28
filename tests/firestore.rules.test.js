@@ -28,7 +28,8 @@ async function seed() {
     await setDoc(doc(db, "families/lee"), {
       familyName: "LEE",
       memberEmails: [email("admin"), email("mom")],
-      adminEmails: [email("admin")]
+      adminEmails: [email("admin")],
+      guestEmails: [email("guest")]
     });
     await setDoc(doc(db, "families/lee/members/admin"), { username: "admin", email: email("admin"), name: "관리자", role: "admin" });
     await setDoc(doc(db, "families/lee/members/mom"), { username: "mom", email: email("mom"), name: "엄마", role: "user" });
@@ -84,4 +85,25 @@ test("admin manages members but the admin list is fixed", async () => {
   await assertFails(updateDoc(doc(db, "families/lee"), { memberEmails: [email("mom")] }));
   await assertFails(deleteDoc(doc(db, "families/lee/members/admin")));
   await assertSucceeds(deleteDoc(doc(db, "families/lee/members/dad")));
+});
+test("guest can read everything but write nothing", async () => {
+  await seed();
+  const db = as("guest");
+  await assertSucceeds(getDoc(doc(db, "families/lee")));
+  await assertSucceeds(getDoc(doc(db, "families/lee/members/mom")));
+  await assertSucceeds(getDoc(doc(db, "families/lee/state/chores")));
+  await assertSucceeds(getDoc(doc(db, "families/lee/fridgePhotos/p1")));
+  await assertFails(setDoc(doc(db, "families/lee/state/chores"), { items: [] }));
+  await assertFails(setDoc(doc(db, "families/lee/fridgePhotos/p2"), { dataUrl: "data:image/jpeg;base64,AA" }));
+  await assertFails(setDoc(doc(db, "families/lee/members/guest"), { username: "guest", email: email("guest"), role: "user" }));
+  await assertFails(updateDoc(doc(db, "families/lee/members/mom"), { name: "게스트" }));
+  await assertFails(updateDoc(doc(db, "families/lee"), { familyName: "GUEST" }));
+});
+
+test("admin cannot promote the guest or change the guest list", async () => {
+  await seed();
+  const db = as("admin");
+  await assertFails(updateDoc(doc(db, "families/lee"), { memberEmails: [email("admin"), email("mom"), email("guest")] }));
+  await assertFails(updateDoc(doc(db, "families/lee"), { guestEmails: [] }));
+  await assertSucceeds(updateDoc(doc(db, "families/lee"), { familyName: "LEE2" }));
 });
