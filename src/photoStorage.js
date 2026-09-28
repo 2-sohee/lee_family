@@ -62,7 +62,7 @@ export async function readPhoto(file, maxBytes = MAX_FRIDGE_BYTES) {
 // text on receipts, memos and package labels stays legible.
 export async function readRecognitionPhoto(file) {
   validate(file, MAX_FRIDGE_BYTES);
-  const { dataUrl } = await compress(file, 2048, 2.5 * 1024 * 1024);
+  const { dataUrl } = await compress(file, 1600, 1.4 * 1024 * 1024);
   return dataUrl;
 }
 

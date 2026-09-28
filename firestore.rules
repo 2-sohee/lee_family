@@ -26,10 +26,21 @@ service cloud.firestore {
         myEmail() in get(familyPath(familyId)).data.adminEmails;
     }
 
+    // Read-only visitors (provisioned server-side in guestEmails).
+    function isGuest(familyId) {
+      return signedIn() && exists(familyPath(familyId)) &&
+        myEmail() in get(familyPath(familyId)).data.get("guestEmails", []);
+    }
+
+    function canRead(familyId) {
+      return isMember(familyId) || isGuest(familyId);
+    }
+
     function validAccessLists(data) {
       return data.memberEmails is list && data.adminEmails is list &&
         data.adminEmails.size() > 0 &&
-        data.memberEmails.hasAll(data.adminEmails);
+        data.memberEmails.hasAll(data.adminEmails) &&
+        !data.memberEmails.hasAny(data.get("guestEmails", []));
     }
 
     // Accounts created from the app are always regular users; only the fixed
@@ -40,17 +51,18 @@ service cloud.firestore {
     }
 
     match /families/{familyId} {
-      allow get: if isMember(familyId);
+      allow get: if canRead(familyId);
       allow list: if false;
       // The family workspace and its admin are provisioned server-side only.
       allow create, delete: if false;
-      // The admin list is fixed; admins manage members but cannot change admins.
+      // The admin and guest lists are fixed; admins manage members only.
       allow update: if isAdmin(familyId) &&
         validAccessLists(request.resource.data) &&
-        request.resource.data.adminEmails == resource.data.adminEmails;
+        request.resource.data.adminEmails == resource.data.adminEmails &&
+        request.resource.data.get("guestEmails", []) == resource.data.get("guestEmails", []);
 
       match /members/{username} {
-        allow read: if isMember(familyId);
+        allow read: if canRead(familyId);
         allow delete: if isAdmin(familyId) && !(resource.data.email in get(familyPath(familyId)).data.adminEmails);
         allow create: if isAdmin(familyId) && roleAllowed(familyId, request.resource.data);
         allow update: if (isAdmin(familyId) && roleAllowed(familyId, request.resource.data)) ||
@@ -61,14 +73,14 @@ service cloud.firestore {
       }
 
       match /state/{name} {
-        allow read: if isMember(familyId);
+        allow read: if canRead(familyId);
         allow write: if isMember(familyId) &&
           name in ["ingredients", "events", "chores", "notices", "shopping", "purchases", "budget"] &&
           request.resource.data.items is list;
       }
 
       match /fridgePhotos/{photoId} {
-        allow read: if isMember(familyId);
+        allow read: if canRead(familyId);
         allow create: if isMember(familyId) && request.resource.data.dataUrl is string;
         allow delete: if isMember(familyId);
       }

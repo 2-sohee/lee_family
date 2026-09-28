@@ -282,7 +282,7 @@ function schedulePriceRefresh() {
 }
 
 export async function refreshPrices(force) {
-  if (priceBusy || !window.familyPricer) return;
+  if (priceBusy || !window.familyPricer || window.familyCloud?.isGuest) return;
   if (!force && Date.now() < priceAutoBlockedUntil) return;
   const targets = shopping().filter(item => force || !hasFreshPrice(item));
   if (!targets.length) return;

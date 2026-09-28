@@ -1,8 +1,7 @@
 import { Schema } from "firebase/ai";
-import { friendlyAiError, generateWithFallback, statusOf } from "./aiClient.js";
+import { friendlyAiError, generateWithFallback } from "./aiClient.js";
 
 const MAX_ITEMS = 40;
-const SEARCH_BLOCK_KEY = "lee-family:price-search-blocked-until";
 
 const responseSchema = Schema.object({
   properties: {
@@ -30,31 +29,19 @@ const RULES = `규칙:
 - unitPrice는 요청 단위 1개 가격, total은 요청 수량 전체 가격(배송비 제외)이야.
 - 품목마다 index를 그대로 돌려주고, 확실하지 않아도 일반적인 시세로 추정해.`;
 
-const searchBlocked = () => Number(localStorage.getItem(SEARCH_BLOCK_KEY) || 0) > Date.now();
-
 function parseJson(text) {
   const raw = String(text || "");
   const match = raw.match(/\{[\s\S]*\}/);
   return JSON.parse(match ? match[0] : raw || "{}");
 }
 
-// Live Google Search grounding needs a paid Gemini plan; on the free plan it is skipped for a while.
-async function searchPrices(items) {
-  const prompt = `아래 장보기 품목의 현재 인터넷 최저가를 Google 검색으로 찾아줘.\n${describe(items)}\n${RULES}\n- 찾은 상품 페이지 주소를 url에 넣어줘.\n- 다른 설명 없이 JSON만 출력: {"items":[{"index":1,"unitPrice":0,"total":0,"store":"","url":"","note":""}]}`;
-  const response = await generateWithFallback([prompt], {
-    key: "price-search",
-    options: { tools: [{ googleSearch: {} }], generationConfig: { temperature: 0.1 } },
-    models: ["gemini-3.7-flash", "gemini-3.8-flash"],
-    rounds: 1
-  });
-  const metadata = response.candidates?.[0]?.groundingMetadata;
-  return { items: parseJson(response.text()).items, source: "search", suggestions: metadata?.searchEntryPoint?.renderedContent || "" };
-}
-
+// Live Google Search grounding (tools: [{ googleSearch: {} }]) is not available on the
+// free Spark plan (429, quota 0), so prices are AI estimates of typical online lowest prices.
 async function estimateWithModel(items) {
   const prompt = `아래 장보기 품목의 일반적인 인터넷 최저가를 추정해줘.\n${describe(items)}\n${RULES}`;
   const response = await generateWithFallback([prompt], {
     key: "price-estimate",
+    timeout: 20000,
     options: { generationConfig: { responseMimeType: "application/json", responseSchema, temperature: 0.2 } }
   });
   return { items: parseJson(response.text()).items, source: "ai", suggestions: "" };
@@ -70,24 +57,15 @@ const toWon = value => Math.min(10_000_000, Math.max(0, Math.round(Number(value)
 export async function estimatePrices(items) {
   const list = [].concat(items).filter(item => item?.name).slice(0, MAX_ITEMS);
   if (!list.length) return { prices: [], suggestions: "" };
-  let result = null;
-  if (!searchBlocked()) {
-    try {
-      result = await searchPrices(list);
-    } catch (error) {
-      if ([400, 403, 429].includes(statusOf(error))) localStorage.setItem(SEARCH_BLOCK_KEY, String(Date.now() + 6 * 3600_000));
-    }
-  }
-  if (!Array.isArray(result?.items) || !result.items.length) {
-    try {
-      result = await estimateWithModel(list);
-    } catch (error) {
-      console.error(error);
-      throw new Error(friendlyAiError(error, {
-        retry: "잠시 후 💰 최저가 조회를 다시 눌러주세요.",
-        fallback: "가격을 조회하지 못했어요. 잠시 후 다시 시도해주세요."
-      }));
-    }
+  let result;
+  try {
+    result = await estimateWithModel(list);
+  } catch (error) {
+    console.error(error);
+    throw new Error(friendlyAiError(error, {
+      retry: "잠시 후 💰 최저가 조회를 다시 눌러주세요.",
+      fallback: "가격을 조회하지 못했어요. 잠시 후 다시 시도해주세요."
+    }));
   }
   const prices = [];
   for (const raw of Array.isArray(result.items) ? result.items : []) {
