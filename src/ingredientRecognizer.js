@@ -1,8 +1,8 @@
 import { getAI, getGenerativeModel, GoogleAIBackend, Schema } from "firebase/ai";
 import { firebaseApp } from "./firebase.js";
 
-// Newest stable model first; older ones are fallbacks if a model is retired or unavailable.
-const MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash"];
+// Newest stable model first; on overload/unavailability the next model is tried.
+const MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
 export const PLACES = ["냉장실", "냉동실", "실온"];
 
 const responseSchema = Schema.object({
@@ -53,18 +53,24 @@ function toPart(dataUrl) {
   return { inlineData: { mimeType: match[1], data: match[2] } };
 }
 
-const isModelMissing = error => /404|not found|is not supported|unsupported model/i.test(String(error?.message || ""));
+const statusOf = error => Number(error?.customErrorData?.status) || Number(/\[(\d{3})\b/.exec(String(error?.message || ""))?.[1]) || 0;
+const codeOf = error => String(error?.code || "");
+// Overloaded, rate limited, retired or network-level failures are worth retrying on another model.
+const retryable = error => [404, 408, 429, 500, 502, 503, 504].includes(statusOf(error)) || /high demand|overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|Failed to fetch|NetworkError|Load failed/i.test(String(error?.message || ""));
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export function friendlyAiError(error) {
-  const text = String(error?.message || error || "");
-  if (/api-not-enabled|has not been used|is disabled|SERVICE_DISABLED|firebasevertexai|generativelanguage|API_KEY_SERVICE_BLOCKED|PERMISSION_DENIED|403/i.test(text)) {
-    return "AI 재료 인식이 아직 활성화되지 않았어요. 관리자가 Firebase Console > AI Logic에서 '시작하기'를 눌러 Gemini Developer API를 켜야 해요.";
+  const status = statusOf(error), code = codeOf(error), text = String(error?.message || "");
+  if (code.includes("api-not-enabled") || /SERVICE_DISABLED|has not been used in project|API_KEY_SERVICE_BLOCKED/i.test(text)) {
+    return "AI 재료 인식이 아직 활성화되지 않았어요. 관리자가 Firebase Console > AI Logic에서 Gemini Developer API를 켜야 해요.";
   }
-  if (/429|quota|RESOURCE_EXHAUSTED/i.test(text)) return "AI 사용량 한도에 도달했어요. 잠시 후 다시 시도해주세요.";
-  if (/network|fetch|Failed to fetch|offline/i.test(text)) return "네트워크 연결을 확인한 뒤 다시 시도해주세요.";
+  if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(text)) return "AI 사용량 한도에 도달했어요. 1~2분 뒤 다시 시도해주세요.";
+  if ([500, 502, 503, 504].includes(status) || /high demand|overloaded|UNAVAILABLE/i.test(text)) return "지금 AI 서버에 요청이 많아요. 잠시 후 🔍 인식 버튼을 다시 눌러주세요.";
+  if (status === 403) return "AI 호출 권한이 없어요. Firebase Console > AI Logic 설정과 API 키 제한을 확인해주세요.";
+  if (status === 400) return "사진을 처리하지 못했어요. 다른 사진으로 다시 시도해주세요.";
+  if (/Failed to fetch|NetworkError|Load failed|network/i.test(text)) return "AI 서버에 연결하지 못했어요. 네트워크(와이파이/데이터)를 확인한 뒤 다시 시도해주세요.";
   return "사진에서 재료를 인식하지 못했어요. 더 밝고 가까운 사진으로 다시 시도해주세요.";
 }
-
 function normalize(items) {
   const seen = new Map();
   for (const raw of Array.isArray(items) ? items : []) {
@@ -88,14 +94,21 @@ function normalize(items) {
 export async function recognizeIngredients(dataUrls) {
   const parts = [PROMPT, ...[].concat(dataUrls).slice(0, 4).map(toPart)];
   let lastError = null;
-  for (const name of MODELS) {
-    try {
-      const result = await modelFor(name).generateContent(parts);
-      const parsed = JSON.parse(result.response.text() || "{}");
-      return normalize(parsed.items);
-    } catch (error) {
-      lastError = error;
-      if (!isModelMissing(error)) break;
+  for (let round = 0; round < 2; round++) {
+    if (round) await sleep(2000);
+    for (const name of MODELS) {
+      try {
+        const result = await modelFor(name).generateContent(parts);
+        const parsed = JSON.parse(result.response.text() || "{}");
+        return normalize(parsed.items);
+      } catch (error) {
+        lastError = error;
+        console.warn(`AI model ${name} failed`, statusOf(error), error?.message);
+        if (!retryable(error)) {
+          round = 2;
+          break;
+        }
+      }
     }
   }
   console.error(lastError);
