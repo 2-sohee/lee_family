@@ -24,7 +24,7 @@
 | 스택 | Vanilla HTML/CSS/JS + Vite 7, Firebase 12 (Auth, Firestore, Hosting, AI Logic) |
 | Firebase 프로젝트 | `lee-house-0905`, Spark(무료) 플랜. Cloud Functions 없음 |
 | 배포 | `main`에 push하면 GitHub Actions가 규칙 테스트 → 빌드 → Hosting과 Firestore 규칙 배포 |
-| 계정 | 시스템 관리자 `admin` / `admin!` (이름 `관리자`, 고정). 가족 계정은 관리자가 `설정`에서 생성 |
+| 계정 | 시스템 관리자 `admin` / `admin!` (이름 `관리자`, 고정). 가족 계정은 관리자가 `설정`에서 생성. 게스트 `guest` / `guest` (읽기 전용, 4.8) |
 | 현재 가족 데이터 | `families/lee` 구성원: admin(관리자), ddoing(또잉이), sora(또랑이) |
 | 외부 연동 | 토스뱅크 자동 조회·쿠팡/컬리 장바구니 연동은 불가 판정으로 제외 (7.4) |
 
@@ -36,7 +36,9 @@
 | #2 | 모바일 하단 탭 수정, 냉장고 기반 추천, AI 사진 재료 인식, 관리자 고정·`설정` 페이지 |
 | #3 | 가족 일정 기간(시작~종료) 등록, AI 인식 재시도·오류 안내 개선 |
 | #4 | 추천 메뉴 색상·5개 제한, 냉장고 재료 수정·삭제, 인식 후 사진 자동 정리, 일정 앞뒤 3개월, AI 공통 모듈 분리, E2E 스모크 테스트, 이 문서 |
-| 이번 PR | 마트·Budget 탭(Budget은 직접 입력 전용), 글씨가 많은 사진(영수증·메모·라벨) 인식 강화, 마트·Budget E2E |
+| #5 | 마트·Budget 탭(Budget은 직접 입력 전용), 글씨가 많은 사진(영수증·메모·라벨) 인식 강화, 마트·Budget E2E |
+| #6 | AI 응답 속도 개선(4.4.2), 무료 한도 정리(4.4.3), 게스트 읽기 전용 로그인(4.8) |
+| #7 | 일정 달력 일~토 순서, 한국 공휴일·대체공휴일 빨간날, 일요일 빨강·토요일 파랑(4.6) |
 
 ---
 
@@ -208,7 +210,7 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
      - 취소하거나 인식 결과가 0개면 사진을 **남겨서** 다시 시도할 수 있게 합니다.
 - **AI 호출 (`src/aiClient.js`):**
   - `firebase/ai`의 `GoogleAIBackend`(Gemini Developer API, 무료 등급)를 사용합니다. API 키는 웹 config 값이며, AI Logic이 Console에서 활성화되어 있습니다.
-  - 모델 체인은 `gemini-3.8-flash → 3.7 → 3.6 → 3.5 → 3.1-flash-lite` 순서이고, 전체를 2라운드까지 시도합니다(라운드 사이 2초).
+  - 모델 체인은 `gemini-3.6-flash → 3.5 → 3.8 → 3.7 → 3.1-flash-lite` 순서입니다. 단, **마지막으로 성공한 모델을 먼저** 시도하고, 최근 실패한 모델은 잠시 건너뜁니다(4.4.2). 전체를 2라운드까지 시도합니다(라운드 사이 1.5초).
   - **재시도 대상:** HTTP 404, 408, 429, 500, 502, 503, 504와 `high demand`, `UNAVAILABLE`, `RESOURCE_EXHAUSTED`, 네트워크 오류. 그 밖의 오류는 즉시 throw합니다.
   - **상태 판별:**
     - `error.customErrorData.status`를 우선 보고, 없으면 메시지의 `[500 ...]`에서 읽습니다.
@@ -226,7 +228,7 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
 - **목적:** 영수증, 온라인 주문내역 캡처, 장보기 메모, 제품 라벨처럼 글씨가 많은 사진에서도 재료를 빠짐없이 뽑습니다.
 - **해상도:**
   - 저장용 사진은 Firestore 한도 때문에 1280px, 약 700KB로 줄어서 작은 글씨가 뭉개질 수 있습니다.
-  - 그래서 업로드할 때 `readRecognitionPhoto(file)`로 **인식 전용 고해상도 사본**(최대 2048px, 약 2.5MB 이하)을 따로 만듭니다.
+  - 그래서 업로드할 때 `readRecognitionPhoto(file)`로 **인식 전용 고해상도 사본**(최대 1600px, 약 1.4MB 이하)을 따로 만듭니다.
   - 이 사본은 `app.js`의 `recognitionImages` Map(키: 저장본 dataUrl)에 메모리로만 보관하고 Firestore에는 저장하지 않습니다.
   - 새로고침한 뒤 다시 인식하면 저장본으로 대신합니다.
 - **프롬프트 (`ingredientRecognizer.js`의 `PROMPT`):**
@@ -238,6 +240,36 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
 - **UI:** confidence 0.5 미만 항목은 기본으로 선택 해제하고 `⚠ 글씨가 흐려 확인이 필요해요`를 표시합니다.
 - **검증 (합성 영수증 40줄 = 식품 35 + 비식품 5):** 식품 35개를 모두 인식했고 비식품 5개는 제외됐습니다. 이전 프롬프트는 "진라면", "비비고 왕교자", "코카콜라"처럼 브랜드명을 그대로 두는 경우가 있었고, 새 프롬프트는 일반 재료명과 용량이 붙은 수량(`1L 2개`)을 돌려줍니다.
 - **한계:** 손글씨가 심하게 흘려 쓰였거나, 빛 반사나 구김이 심한 사진은 여전히 누락될 수 있습니다. 확인 창에서 고쳐 쓰는 흐름을 유지합니다.
+
+#### 4.4.2 AI 응답 속도 개선 (2026-09-29, PR #6)
+
+- **문제:** 사진 인식과 최저가 조회가 10~60초씩 걸렸습니다.
+- **측정(curl 벤치마크)으로 찾은 원인:**
+  - 가격 추정 시간의 대부분이 모델의 thinking 토큰이었습니다. 기본값은 13초, `thinkingLevel: minimal`에서는 3.3초였습니다.
+  - 사진 인식은 출력 길이에 묶여 있었습니다. 긴 키 JSON은 13.6초, 짧은 키 스키마는 5.6초였습니다.
+  - 한도가 찬(429) 모델이나 과부하(500) 모델을 매번 처음부터 다시 시도하면서 대기가 쌓였습니다. 한 모델은 429가 나기까지 64초가 걸렸습니다.
+  - 무료 등급에서 Google Search grounding은 항상 429(quota 0)라서 첫 시도가 늘 낭비였습니다.
+- **변경 (`src/aiClient.js`):**
+  - `localStorage["lee-family:ai-last-ok"]`에 마지막 성공 모델을 저장하고 다음 호출에서 먼저 씁니다.
+  - `localStorage["lee-family:ai-cooldown"]`에 실패한 모델의 재시도 가능 시각을 저장합니다.
+    - 429 중 **하루 한도(`PerDay`)** 초과는 다음 한도 초기화 시각(미국 태평양시 자정)까지 건너뜁니다.
+    - 그 밖의 429는 서버가 알려준 대기 시간(30~600초로 제한), 404는 1시간, 나머지는 30초입니다.
+    - 모든 모델이 쿨다운 중이면 그래도 전체를 시도합니다(완전 차단 방지).
+  - `thinkingConfig.thinkingLevel`은 `minimal`로 시작합니다. 모델이 400 "Thinking level ... not supported"를 주면 그 모델만 `low`, 그다음 기본값으로 내립니다. 예: 3.7은 MINIMAL을 거부합니다.
+  - `generateWithFallback(parts, {timeout})`은 호출별 타임아웃을 SDK의 `SingleRequestOptions`로 넘깁니다. 타임아웃이나 중단도 다음 모델로 넘어갑니다. 모두 실패하면 "너무 오래 걸려요" 안내를 보여줍니다.
+- **인식 (`ingredientRecognizer.js`):** 응답 스키마를 짧은 키 `n/e/q/p/d/c`와 `propertyOrdering`으로 바꿨습니다. confidence는 0.8 미만일 때만 넣게 했습니다. `normalize()`는 짧은 키와 긴 키를 모두 받습니다. 타임아웃은 40초입니다.
+- **가격 (`priceEstimator.js`):** grounding 시도를 없애고 AI 추정만 씁니다. 타임아웃은 20초입니다.
+- **사진:** 인식용 고해상도 사본은 2048px/2.5MB에서 1600px/1.4MB로 줄였습니다. 업로드 시간이 줄고, 40줄 영수증 인식 품질은 그대로였습니다.
+- **결과(단건 기준):** 가격 약 3~4초, 사진 인식 약 5~8초입니다. 모델 상태에 따라 달라집니다.
+
+#### 4.4.3 무료 사용 한도 (Spark + Gemini Developer API 무료 등급)
+
+- 429 응답의 quota 정보로 확인했습니다: `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, 값 **20**. **프로젝트 전체(가족 모두 합산), 모델당 하루 20회**입니다.
+- 모델 5개로 폴백하므로 하루 최대 약 100회입니다. 모델마다 한도가 다를 수 있습니다.
+- 한도는 **미국 태평양시 자정**(한국 시간 오후 4시, 서머타임이 끝나면 오후 5시)에 초기화됩니다.
+- 사진 인식 1번(사진 4장까지)이 1회, 마트 가격 새로고침 1번이 1회입니다. 가격은 가격이 없거나 바뀐 품목만 묶어서 조회합니다.
+- 더 필요하면 Blaze(종량제)로 전환합니다. 결제 수단을 등록해야 합니다.
+- 게스트는 AI를 호출하지 않습니다(4.8).
 
 #### 4.4.1 "켰는데 안 됐던" 원인 (기록)
 
@@ -267,7 +299,7 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
 - **기간 일정:**
   - 선택 입력인 `endDate`를 추가했습니다.
   - `eventEnd(e)`는 endDate가 올바르고 date보다 늦을 때만 그 값을 씁니다. `eventOn(e, day)`는 ISO 문자열 비교로 기간 안인지 봅니다.
-  - `eventMarkup(e, day)`는 기간 막대를 이어 그립니다. 시작 칸과 주 시작(월요일) 칸에만 제목을 진하게 쓰고, 중간 칸은 `range-mid`와 `range-open` 클래스를 씁니다.
+  - `eventMarkup(e, day)`는 기간 막대를 이어 그립니다. 시작 칸과 주 시작(일요일) 칸에만 제목을 진하게 쓰고, 중간 칸은 `range-mid`와 `range-open` 클래스를 씁니다.
   - 목록은 `시작 ~ 종료 (N일)` 형식이고 시작일 순으로 정렬합니다.
   - `endDate`가 없는 기존 일정은 하루 일정으로 동작합니다.
 - **앞뒤 3개월 (이번 변경):**
@@ -278,6 +310,17 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
   - 다른 달을 보다가 `＋ 일정 추가`를 누르면 시작일 기본값이 그 달 1일입니다.
   - 대시보드의 주간 미리보기는 항상 이번 주입니다.
   - 범위는 **추가·표시 제한**입니다. 이미 저장된 범위 밖 일정도 목록에는 계속 보입니다.
+- **일~토 달력과 빨간날 (PR #7):**
+  - 목적: 한국 달력처럼 일요일부터 보이고, 공휴일을 한눈에 알아보게 합니다.
+  - 월간 달력과 대시보드 주간 미리보기 모두 **일요일 시작**입니다. 주 시작 계산은 `date.getDay()`(일=0)를 씁니다.
+  - `holidays.js`의 `holidayNames(iso)`가 그 날의 공휴일 이름 배열을 돌려줍니다. `holidaysOf(year)`는 연도별로 캐시합니다.
+    - 양력 고정: 신정, 3·1절, 노동절(2026~), 어린이날, 현충일, 제헌절(2026~), 광복절, 개천절, 한글날, 성탄절.
+    - 음력: `LUNAR` 표(설날·부처님 오신 날·추석의 양력 날짜, 2024~2030). 설날·추석은 앞뒤 하루를 포함한 3일입니다.
+    - 선거일·임시공휴일: `SPECIAL` 표. **새 임시공휴일이나 선거일이 정해지면 이 표에 추가하고, 2031년 이후는 `LUNAR`를 늘려야 합니다.**
+    - 대체공휴일: 설날·추석은 일요일이나 다른 공휴일과 겹칠 때, 나머지(3·1절, 노동절, 어린이날, 제헌절, 광복절, 개천절, 한글날, 부처님 오신 날, 성탄절)는 토·일요일이나 겹칠 때, 다음 평일 비공휴일에 하루를 줍니다. 같은 날이 겹쳐 생긴 원인은 대체공휴일을 한 번만 만듭니다(예: 2025-05-05 어린이날과 부처님 오신 날 → 05-06 하루). 신정과 현충일은 대체공휴일이 없습니다.
+    - 검증: 2024~2030년을 date.nager.at 공휴일 API와 비교했습니다. 쉬는 날은 모두 일치했습니다. 차이는 세 가지입니다: 우리는 주말에 걸린 실제 공휴일도 표시합니다. 2027-12-27(성탄절)과 2028-10-05(추석·개천절 겹침) 대체공휴일은 Nager에 빠져 있습니다. Nager는 2024~2025년 제헌절을 잘못 넣었습니다.
+  - 표시: `dayClass()`가 `holiday`, `sun`, `sat` 클래스를 붙이고 `dayHead()`가 날짜 옆에 공휴일 이름(`.holiday-name`)을 씁니다. 일요일·공휴일 숫자는 빨강(`#d93636`), 토요일은 파랑(`#2f6fd6`)입니다. 토요일이면서 공휴일이면 빨강입니다. 다른 달 칸은 옅은 색입니다. 모바일에서는 이름이 날짜 아래로 내려가고, 길면 말줄임과 툴팁으로 보입니다.
+  - 7열 그리드는 `repeat(7, minmax(0, 1fr))`입니다. 긴 공휴일 이름 때문에 칸 폭이 달라지지 않게 합니다.
 
 ### 4.7 관리자 `설정` (PR #2)
 
@@ -287,6 +330,33 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
   - 구성원 편집, 활성 해제, 삭제(관리자 제외)
   - 시스템 정보 확인
 - 관리자가 `profile()`로 들어오면 `설정`으로 보냅니다. 상단 프로필에는 `⚙ ADMIN`이 표시됩니다.
+
+### 4.8 게스트 읽기 전용 로그인 (PR #6)
+
+- **목적:** 가족이 아닌 방문자가 계정 없이 앱을 구경할 수 있게 합니다. 데이터는 바꿀 수 없고, 가족이 함께 쓰는 AI 무료 한도도 쓰지 않습니다.
+- **로그인:**
+  - 로그인 화면 아래에 `게스트로 방문하셨나요? [게스트로 둘러보기]` 버튼이 있습니다(`data-guest-login`).
+  - 아이디 `guest`, 비밀번호 `guest`로 직접 입력해도 됩니다.
+  - Firebase 비밀번호는 6자 이상이어야 해서, `auth.signIn`이 `guest`/`guest` 입력을 실제 비밀번호 `guest-lee-view`로 바꿔 보냅니다(`src/auth.js`의 `GUEST_*` 상수). 이 비밀번호는 공개되어도 됩니다. 쓰기를 막는 것은 보안 규칙입니다.
+- **계정 준비 (서버에서 한 번, 운영에 적용 완료):**
+  - Auth 사용자 `guest@lee-family.example.com` / `guest-lee-view`.
+  - `families/lee` 문서에 `guestEmails: ["guest@lee-family.example.com"]`.
+  - firebase-admin으로 넣었습니다. 이 PC에서는 gRPC가 막혀 `initializeFirestore(app, {preferRest: true})`를 써야 합니다.
+- **보안 규칙 (`firestore.rules`):**
+  - `isGuest()`는 `guestEmails`에 내 이메일이 있는지 봅니다. `canRead() = isMember() || isGuest()`로 family 문서, members, state, fridgePhotos를 **읽기만** 허용합니다.
+  - 모든 쓰기는 여전히 `isMember()`/`isAdmin()`만 됩니다.
+  - `validAccessLists`는 `memberEmails`에 게스트가 들어가지 못하게 합니다. family 문서 update는 `guestEmails`를 바꿀 수 없습니다. 게스트 목록은 서버에서만 관리합니다.
+  - 테스트: `tests/firestore.rules.test.js`의 guest 두 케이스.
+- **클라이언트:**
+  - `cloud.js`: `guestEmails`에 있으면 `isGuest=true`입니다. `me()`는 가상의 게스트 프로필(role `guest`, 이름 `게스트`, 👀)을 돌려줍니다. `saveState()`는 아무것도 쓰지 않고, `saveProfile()`은 거부합니다. `createMember`는 `guest` 아이디를 막습니다.
+  - `src/guest.js`의 `enableGuestMode()`: `body.guest-mode` 클래스를 달고 상단에 노란 안내 띠를 표시합니다.
+    - 캡처 단계 리스너가 click, submit, change를 막고 "게스트는 구경만 할 수 있어요." 토스트를 띄웁니다.
+    - 허용되는 것은 하단 탭, 로그아웃, 추천 필터, 달력 이동, 공지 페이지와 열기, 모달 닫기, 마트 목록 복사, 쿠팡·컬리 검색 링크뿐입니다(`ALLOWED`).
+    - CSS로 추가·수정·삭제·사진·AI 버튼을 숨깁니다.
+  - `identity.js`: 게스트는 `내 프로필` 탭이 없습니다. 상단 프로필은 `GUEST · 게스트 · 구경만 가능`으로 보입니다. 관리자 `설정`의 시스템 정보에 게스트 계정 안내가 있습니다.
+  - **AI 차단:** `bootstrap.js`의 `familyRecognizer`/`familyPricer`는 게스트면 즉시 거부합니다. `household.refreshPrices()`도 게스트면 자동 가격 조회를 하지 않습니다.
+- **E2E:** `tests/e2e/guest.e2e.cjs`는 버튼 로그인, 안내 띠, 데이터 열람, 편집 버튼 숨김, 집안일 토글 차단, `saveState` 무시, AI 거부, 자동 가격 조회 0회, 로그아웃을 확인합니다.
+- **게스트를 없애려면:** `families/lee.guestEmails`를 비우거나 Auth에서 guest 사용자를 삭제하면 됩니다.
 
 ---
 
@@ -329,6 +399,7 @@ npm run emulators                                 # 터미널 1
 npx vite --port 5179 --strictPort --host 127.0.0.1 # 터미널 2
 node tests/e2e/smoke.e2e.cjs                      # 터미널 3 → "ALL OK"
 node tests/e2e/mart-budget.e2e.cjs                # 마트·Budget 흐름 → "ALL OK"
+node tests/e2e/guest.e2e.cjs                      # 게스트 읽기 전용 → "guest e2e OK"
 ```
 
 - 스크립트가 에뮬레이터에 admin/ddoing 계정과 `families/lee` 데이터를 직접 넣습니다(`seed()`).
@@ -481,3 +552,5 @@ state.budget    = [{ id, balance, max, account, note, at:ms, by, source:"manual"
 - AI 호출 남용 방지를 위해 **App Check** 도입을 권장합니다.
 - `setup-java@v4` deprecation 경고가 있어 CI를 v5로 올려야 합니다. `ubuntu-latest`는 2026-10-19부터 Ubuntu 26으로 바뀝니다.
 - 일정 캘린더의 월 이동 상태(`calendarOffset`)는 새로고침하면 이번 달로 초기화됩니다(의도된 동작).
+- 공휴일 표(`holidays.js`의 `LUNAR`, `SPECIAL`)는 수동으로 관리합니다. 2031년 이후 음력 날짜와 새 임시공휴일·선거일을 추가해야 합니다.
+- AI 무료 한도는 가족 전체가 모델당 하루 20회를 나눠 씁니다(4.4.3). 한도가 자주 차면 Blaze 전환을 검토하세요.
