@@ -39,6 +39,8 @@
 | #5 | 마트·Budget 탭(Budget은 직접 입력 전용), 글씨가 많은 사진(영수증·메모·라벨) 인식 강화, 마트·Budget E2E |
 | #6 | AI 응답 속도 개선(4.4.2), 무료 한도 정리(4.4.3), 게스트 읽기 전용 로그인(4.8) |
 | #7 | 일정 달력 일~토 순서, 한국 공휴일·대체공휴일 빨간날, 일요일 빨강·토요일 파랑(4.6) |
+| #8 | 인계 문서 갱신 |
+| #9 | 집안일 TO-DO LIST를 로그인한 구성원 본인 것만 표시(4.9) |
 
 ---
 
@@ -358,6 +360,18 @@ E2E 테스트는 `window.familyRecognizer`를 바꿔 끼워 AI 호출 없이 인
 - **E2E:** `tests/e2e/guest.e2e.cjs`는 버튼 로그인, 안내 띠, 데이터 열람, 편집 버튼 숨김, 집안일 토글 차단, `saveState` 무시, AI 거부, 자동 가격 조회 0회, 로그아웃을 확인합니다.
 - **게스트를 없애려면:** `families/lee.guestEmails`를 비우거나 Auth에서 guest 사용자를 삭제하면 됩니다.
 
+### 4.9 집안일 TO-DO LIST 표시 범위 (PR #9)
+
+- **목적:** 가족 구성원이 로그인하면 자기 집안일만 보이게 합니다.
+- **규칙 (`app.js`):**
+  - `ownChoresOnly()`는 현재 사용자가 일반 구성원(role `user`)이면 true입니다.
+  - `visibleChores()`는 `ownsChore(c, me)`로 거릅니다. `ownerId`가 있으면 아이디로, 없는 예전 데이터는 담당자 이름(또는 `나`)으로 비교합니다.
+  - `choreMembers()`는 집안일 화면의 구성원 그룹을 본인 하나로 줄입니다.
+  - 대시보드 카드(최대 4개)와 `집안일` 화면이 모두 이 함수를 씁니다. 비어 있으면 "나에게 등록된 집안일이 없어요."를 보여줍니다.
+  - **관리자와 게스트는 전체 구성원의 집안일을 그대로 봅니다.**
+- **범위:** 화면 표시만 바꿉니다. 데이터(`state/chores`)는 가족이 함께 쓰는 문서 그대로입니다. 구성원이 다른 사람을 담당자로 지정해 추가할 수는 있지만, 추가한 뒤에는 그 사람 화면에만 보입니다.
+- **E2E:** `tests/e2e/chores.e2e.cjs`는 또잉이·또랑이·관리자·게스트 각각의 대시보드와 집안일 화면 목록을 확인합니다.
+
 ---
 
 ## 5. 코드 수정 규칙 (꼭 읽기)
@@ -400,6 +414,7 @@ npx vite --port 5179 --strictPort --host 127.0.0.1 # 터미널 2
 node tests/e2e/smoke.e2e.cjs                      # 터미널 3 → "ALL OK"
 node tests/e2e/mart-budget.e2e.cjs                # 마트·Budget 흐름 → "ALL OK"
 node tests/e2e/guest.e2e.cjs                      # 게스트 읽기 전용 → "guest e2e OK"
+node tests/e2e/chores.e2e.cjs                     # 집안일 본인 것만 → "chores e2e OK"
 ```
 
 - 스크립트가 에뮬레이터에 admin/ddoing 계정과 `families/lee` 데이터를 직접 넣습니다(`seed()`).
