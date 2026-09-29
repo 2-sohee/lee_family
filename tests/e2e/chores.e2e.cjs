@@ -1,4 +1,4 @@
-// Chores visibility E2E (emulators + Vite): members see only their own chores.
+// Chores visibility E2E (emulators + Vite): the dashboard card shows only the member's own chores; the chores tab shows everyone's.
 process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
 process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
 const { initializeApp } = require("firebase-admin/app");
@@ -58,12 +58,13 @@ async function titles(page) {
   const ddoing = await titles(await login(browser, "ddoing", "ddoing1"));
   console.log("ddoing", JSON.stringify(ddoing));
   assert.deepEqual(ddoing.dashboard.sort(), ["설거지-또잉", "청소-또잉(이름만)"]);
-  assert.deepEqual(ddoing.groups, ["또잉이"]);
-  assert.deepEqual(ddoing.rows.sort(), ["설거지-또잉", "청소-또잉(이름만)"]);
+  assert.deepEqual(ddoing.groups, ["또잉이", "또랑이"]);
+  assert.equal(ddoing.rows.length, 3);
   const sora = await titles(await login(browser, "sora", "sora12"));
   console.log("sora", JSON.stringify(sora));
   assert.deepEqual(sora.dashboard, ["빨래-또랑"]);
-  assert.deepEqual(sora.groups, ["또랑이"]);
+  assert.deepEqual(sora.groups, ["또잉이", "또랑이"]);
+  assert.equal(sora.rows.length, 3);
   const admin = await titles(await login(browser, "admin", "admin!"));
   console.log("admin", JSON.stringify(admin));
   assert.equal(admin.dashboard.length, 3);
