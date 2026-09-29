@@ -176,3 +176,15 @@ button.danger{border:1px solid rgba(217,81,81,.4);background:#fff5f5;color:var(-
 .guest-entry{display:grid;gap:6px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);text-align:center;font-size:13px;color:var(--ink)}.guest-entry .secondary{width:100%}.guest-entry small{color:var(--muted);font-size:11px}
 .guest-banner{position:sticky;top:0;z-index:900;padding:8px 14px;background:#fff4d6;border-bottom:1px solid #f0d28a;color:#6b5314;font-size:12px;font-weight:600;text-align:center}
 .guest-mode [data-modal],.guest-mode [data-photo],.guest-mode [data-recognize],.guest-mode [data-shop-add],.guest-mode [data-shop-price],.guest-mode [data-budget-balance],.guest-mode [data-budget-settings],.guest-mode .row-actions,.guest-mode [data-delete],.guest-mode [data-edit-ingredient],.guest-mode [data-remove-photo],.guest-mode [data-shop-missing]{display:none!important}
+
+/* Calendar: Sunday/holiday red, Saturday blue */
+.day-name.sun,.day.sun .day-num,.day.holiday .day-num{color:#d93636}
+.day-name.sat,.day.sat:not(.holiday) .day-num{color:#2f6fd6}
+.day.other-month.sun .day-num,.day.other-month.holiday .day-num{color:#e9a3a3}
+.day.other-month.sat:not(.holiday) .day-num{color:#9fb9e6}
+.day-num{display:flex;align-items:baseline;gap:4px;min-width:0}
+.holiday-name{font-size:10px;font-weight:600;color:#d93636;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.day.other-month .holiday-name{color:#e9a3a3}
+@media(max-width:650px){.holiday-name{display:block;font-size:8.5px;letter-spacing:-.3px}.day-num{flex-direction:column;gap:0}}
+.week,.month-grid{grid-template-columns:repeat(7,minmax(0,1fr))}.week .day,.month-grid .day{min-width:0}
+.day-num{max-width:100%}.holiday-name{max-width:100%}@media(max-width:650px){.day-num{align-items:stretch}}
